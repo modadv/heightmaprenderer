@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <iomanip>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -11,14 +12,14 @@ void printSystemInfo() {
 #ifdef _WIN32
     char buffer[MAX_PATH];
     GetCurrentDirectoryA(MAX_PATH, buffer);
-    std::cout << "当前工作目录: " << buffer << "\n";
+    std::cout << "Current working directory: " << buffer << "\n";
     
     HMODULE hModule = GetModuleHandleA("heightmaprenderer.dll");
     if (hModule) {
         GetModuleFileNameA(hModule, buffer, MAX_PATH);
-        std::cout << "找到DLL: " << buffer << "\n";
+        std::cout << "Found DLL: " << buffer << "\n";
     } else {
-        std::cout << "警告: 未找到heightmaprenderer.dll\n";
+        std::cout << "Warning: heightmaprenderer.dll not found\n";
     }
 #endif
     std::cout << "\n";
@@ -26,42 +27,47 @@ void printSystemInfo() {
 
 int main() {
     std::cout << "=== HeightmapRenderer Library Example ===\n";
-    std::cout << "版本: " << heightmap::HeightmapRenderer::getVersion() << "\n";
+    std::cout << "Version: " << heightmap::HeightmapRenderer::getVersion() << "\n";
     
     printSystemInfo();
 
     try {
-        // 创建渲染器实例
+        // Create renderer instance
         heightmap::HeightmapRenderer renderer;
 
-        // 创建简单的高度图数据（5x5）
-        std::vector<std::vector<float>> heightData = {
-            {0.0f, 0.5f, 1.0f, 0.5f, 0.0f},
-            {0.5f, 1.0f, 1.5f, 1.0f, 0.5f},
-            {1.0f, 1.5f, 2.0f, 1.5f, 1.0f},
-            {0.5f, 1.0f, 1.5f, 1.0f, 0.5f},
-            {0.0f, 0.5f, 1.0f, 0.5f, 0.0f}
-        };
+        // Create simple heightmap data (5x5)
+        std::vector<std::vector<float> > heightData(5);
+        heightData[0] = std::vector<float>(5);
+        heightData[0][0] = 0.0f; heightData[0][1] = 0.5f; heightData[0][2] = 1.0f; heightData[0][3] = 0.5f; heightData[0][4] = 0.0f;
+        heightData[1] = std::vector<float>(5);
+        heightData[1][0] = 0.5f; heightData[1][1] = 1.0f; heightData[1][2] = 1.5f; heightData[1][3] = 1.0f; heightData[1][4] = 0.5f;
+        heightData[2] = std::vector<float>(5);
+        heightData[2][0] = 1.0f; heightData[2][1] = 1.5f; heightData[2][2] = 2.0f; heightData[2][3] = 1.5f; heightData[2][4] = 1.0f;
+        heightData[3] = std::vector<float>(5);
+        heightData[3][0] = 0.5f; heightData[3][1] = 1.0f; heightData[3][2] = 1.5f; heightData[3][3] = 1.0f; heightData[3][4] = 0.5f;
+        heightData[4] = std::vector<float>(5);
+        heightData[4][0] = 0.0f; heightData[4][1] = 0.5f; heightData[4][2] = 1.0f; heightData[4][3] = 0.5f; heightData[4][4] = 0.0f;
 
-        // 加载高度图数据
+        // Load heightmap data
         if (renderer.loadHeightmap(heightData)) {
-            std::cout << "✓ 高度图加载成功!\n";
-            std::cout << "尺寸: " << renderer.getWidth() << "x" << renderer.getHeight() << "\n\n";
+            std::cout << "✓ Heightmap loaded successfully!\n";
+            std::cout << "Size: " << renderer.getWidth() << "x" << renderer.getHeight() << "\n\n";
         } else {
-            std::cerr << "✗ 高度图加载失败!\n";
+            std::cerr << "✗ Failed to load heightmap!\n";
             return 1;
         }
 
-        // 设置缩放
+        // Set scale
         renderer.setScale(1.0f, 5.0f, 1.0f);
 
-        // 生成顶点数据
-        auto vertices = renderer.generateVertices();
-        std::cout << "生成了 " << vertices.size() << " 个顶点:\n";
+        // Generate vertex data - Use Point3D instead of Vertex
+        std::vector<heightmap::Point3D> vertices = renderer.generateVertices();
+        std::cout << "Generated " << vertices.size() << " vertices:\n";
         
-        for (size_t i = 0; i < std::min(size_t(10), vertices.size()); ++i) {
-            const auto& v = vertices[i];
-            std::cout << "  顶点 " << std::setw(2) << i << ": (" 
+        size_t maxVertices = (std::min)(static_cast<size_t>(10), vertices.size());
+        for (size_t i = 0; i < maxVertices; ++i) {
+            const heightmap::Point3D& v = vertices[i];
+            std::cout << "  Vertex " << std::setw(2) << i << ": (" 
                       << std::fixed << std::setprecision(1)
                       << std::setw(4) << v.x << ", " 
                       << std::setw(4) << v.y << ", " 
@@ -69,42 +75,48 @@ int main() {
         }
 
         if (vertices.size() > 10) {
-            std::cout << "  ... (显示前10个顶点)\n";
+            std::cout << "  ... (showing first 10 vertices)\n";
         }
 
-        // 生成索引数据
-        auto indices = renderer.generateIndices();
-        std::cout << "\n生成了 " << indices.size() << " 个索引 ("
-                  << indices.size() / 3 << " 个三角形)\n";
+        // Generate index data
+        std::vector<unsigned int> indices = renderer.generateIndices();
+        std::cout << "\nGenerated " << indices.size() << " indices ("
+                  << indices.size() / 3 << " triangles)\n";
 
-        // 显示一些三角形
-        std::cout << "前几个三角形的索引:\n";
-        for (size_t i = 0; i < std::min(size_t(15), indices.size()); i += 3) {
-            std::cout << "  三角形 " << std::setw(2) << i/3 << ": [" 
-                      << std::setw(2) << indices[i] << ", " 
-                      << std::setw(2) << indices[i+1] << ", " 
-                      << std::setw(2) << indices[i+2] << "]\n";
+        // Show some triangles
+        std::cout << "First few triangle indices:\n";
+        size_t maxIndices = (std::min)(static_cast<size_t>(15), indices.size());
+        for (size_t i = 0; i < maxIndices; i += 3) {
+            if (i + 2 < indices.size()) {
+                std::cout << "  Triangle " << std::setw(2) << i/3 << ": [" 
+                          << std::setw(2) << indices[i] << ", " 
+                          << std::setw(2) << indices[i+1] << ", " 
+                          << std::setw(2) << indices[i+2] << "]\n";
+            }
         }
 
-        // 查询特定位置的高度
-        std::cout << "\n高度查询:\n";
+        // Query height at specific positions
+        std::cout << "\nHeight queries:\n";
         for (int y = 0; y < renderer.getHeight(); y += 2) {
             for (int x = 0; x < renderer.getWidth(); x += 2) {
                 float height = renderer.getHeightAt(x, y);
-                std::cout << "  位置 (" << x << ", " << y << ") 高度: " 
+                std::cout << "  Position (" << x << ", " << y << ") height: " 
                           << std::fixed << std::setprecision(1) << height << "\n";
             }
         }
 
-        std::cout << "\n✓ 示例执行完成!\n";
+        std::cout << "\n✓ Example completed successfully!\n";
         
     } catch (const std::exception& e) {
-        std::cerr << "✗ 异常: " << e.what() << "\n";
+        std::cerr << "✗ Exception: " << e.what() << "\n";
+        return 1;
+    } catch (...) {
+        std::cerr << "✗ Unknown exception occurred\n";
         return 1;
     }
 
 #ifdef _WIN32
-    std::cout << "\n按任意键退出...";
+    std::cout << "\nPress any key to exit...";
     system("pause >nul");
 #endif
 

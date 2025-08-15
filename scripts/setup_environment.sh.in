@@ -1,16 +1,17 @@
 #!/bin/bash
-# 设置HeightmapRenderer库的环境变量
+# Setup environment for HeightmapRenderer library
 
 export HEIGHTMAP_ROOT="@CMAKE_BINARY_DIR@"
 export LD_LIBRARY_PATH="$HEIGHTMAP_ROOT/lib:$LD_LIBRARY_PATH"
 export PATH="$HEIGHTMAP_ROOT/bin:$PATH"
 
-echo "HeightmapRenderer环境已设置"
-echo "库根目录: $HEIGHTMAP_ROOT"
+echo "HeightmapRenderer environment has been set up"
+echo "Library root directory: $HEIGHTMAP_ROOT"
 echo ""
-echo "现在可以运行示例程序："
+echo "You can now run the example programs:"
 echo "  cd $HEIGHTMAP_ROOT/bin"
 echo "  ./basic_example"
 echo ""
-echo "或者使用运行脚本："
-echo "  $HEIGHTMAP_ROOT/bin/run_example.sh"
+echo "Or use the run scripts:"
+echo "  $HEIGHTMAP_ROOT/bin/run_basic_example.sh"
+echo "  $HEIGHTMAP_ROOT/bin/run_bgfx_example.sh (if built with BGFX)"

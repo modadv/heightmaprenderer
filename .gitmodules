@@ -1,0 +1,3 @@
+[submodule "external/bgfx.cmake"]
+	path = external/bgfx.cmake
+	url = git@github.com:modadv/bgfx.cmake.git
