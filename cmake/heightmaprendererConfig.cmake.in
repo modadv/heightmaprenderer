@@ -1,0 +1,18 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# 设置组件
+set(_heightmaprenderer_supported_components "")
+
+foreach(_comp ${heightmaprenderer_FIND_COMPONENTS})
+    if (NOT _comp IN_LIST _heightmaprenderer_supported_components)
+        set(heightmaprenderer_FOUND False)
+        set(heightmaprenderer_NOT_FOUND_MESSAGE "Unsupported component: ${_comp}")
+    endif()
+endforeach()
+
+# 包含目标文件
+include("${CMAKE_CURRENT_LIST_DIR}/heightmaprendererTargets.cmake")
+
+check_required_components(heightmaprenderer)
