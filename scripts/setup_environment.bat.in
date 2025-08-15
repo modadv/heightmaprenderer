@@ -1,0 +1,15 @@
+@echo off
+REM 设置HeightmapRenderer库的环境变量
+
+set HEIGHTMAP_ROOT=@CMAKE_BINARY_DIR@
+set PATH=%HEIGHTMAP_ROOT%\bin;%PATH%
+
+echo HeightmapRenderer环境已设置
+echo 库根目录: %HEIGHTMAP_ROOT%
+echo.
+echo 现在可以运行示例程序：
+echo   cd %HEIGHTMAP_ROOT%\bin
+echo   basic_example.exe
+echo.
+echo 或者使用运行脚本：
+echo   %HEIGHTMAP_ROOT%\bin\run_example.bat

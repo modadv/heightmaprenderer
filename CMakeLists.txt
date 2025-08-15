@@ -13,6 +13,20 @@ include(CMakePackageConfigHelpers)
 # 选项
 option(HEIGHTMAP_BUILD_EXAMPLES "Build examples" ON)
 option(HEIGHTMAP_BUILD_SHARED_LIBS "Build shared libraries" ON)
+option(HEIGHTMAP_INSTALL_EXAMPLES "Install examples" OFF)
+
+# 设置输出目录
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# 多配置生成器的输出目录
+foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER ${CONFIG} CONFIG_UPPER)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib)
+endforeach()
 
 # 设置库类型
 if(HEIGHTMAP_BUILD_SHARED_LIBS)
@@ -32,7 +46,27 @@ set_target_properties(heightmaprenderer PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN YES
+    DEBUG_POSTFIX "_d"
 )
+
+# Windows特定设置
+if(WIN32)
+    set_target_properties(heightmaprenderer PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    )
+    
+    # 为多配置生成器设置
+    foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER ${CONFIG} CONFIG_UPPER)
+        set_target_properties(heightmaprenderer PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/bin
+            LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/bin
+            ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib
+        )
+    endforeach()
+endif()
 
 # 包含目录
 target_include_directories(heightmaprenderer
@@ -110,4 +144,23 @@ install(FILES
 # 构建示例
 if(HEIGHTMAP_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+# 生成环境设置脚本
+if(WIN32)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/setup_environment.bat.in
+        ${CMAKE_BINARY_DIR}/setup_environment.bat
+        @ONLY
+    )
+else()
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/setup_environment.sh.in
+        ${CMAKE_BINARY_DIR}/setup_environment.sh
+        @ONLY
+    )
+    # 设置执行权限
+    file(COPY ${CMAKE_BINARY_DIR}/setup_environment.sh
+         DESTINATION ${CMAKE_BINARY_DIR}
+         FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
