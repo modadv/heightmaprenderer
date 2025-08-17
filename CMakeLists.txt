@@ -425,10 +425,99 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     ${SHADER_OUTPUT_DIR} $<TARGET_FILE_DIR:${PROJECT_NAME}>/../res/runtime/shaders
 )
 
+# ========================================
+# 资源文件复制配置
+# ========================================
+# ========================================
+# 资源文件复制配置
+# ========================================
+
+# 复制 runtime 目录的内容到 bin 目录（不包括 runtime 文件夹本身）
+# 复制 font 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/font)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/font $<TARGET_FILE_DIR:${PROJECT_NAME}>/font
+        COMMENT "Copying font files..."
+    )
+endif()
+
+# 复制 images 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/images)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/images $<TARGET_FILE_DIR:${PROJECT_NAME}>/images
+        COMMENT "Copying image files..."
+    )
+endif()
+
+# 复制 meshes 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/meshes)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/meshes $<TARGET_FILE_DIR:${PROJECT_NAME}>/meshes
+        COMMENT "Copying mesh files..."
+    )
+endif()
+
+# 复制 shaders 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/shaders)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/shaders $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders
+        COMMENT "Copying shader files..."
+    )
+endif()
+
+# 复制 text 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/text)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/text $<TARGET_FILE_DIR:${PROJECT_NAME}>/text
+        COMMENT "Copying text files..."
+    )
+endif()
+
+# 复制 textures 目录
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/textures)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/textures $<TARGET_FILE_DIR:${PROJECT_NAME}>/textures
+        COMMENT "Copying texture files..."
+    )
+endif()
+
+# 复制根目录下的单个文件（如 gamecontrollerdb.txt）
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/gamecontrollerdb.txt)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/res/runtime/gamecontrollerdb.txt $<TARGET_FILE_DIR:${PROJECT_NAME}>/gamecontrollerdb.txt
+        COMMENT "Copying gamecontrollerdb.txt..."
+    )
+endif()
+
+# 复制编译后的着色器到 shaders 目录（覆盖默认的）
+foreach(RENDERER ${RENDERERS})
+    if(EXISTS ${SHADER_OUTPUT_DIR}/${RENDERER})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${SHADER_OUTPUT_DIR}/${RENDERER} $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/${RENDERER}
+            COMMENT "Copying compiled ${RENDERER} shaders..."
+        )
+    endif()
+endforeach()
+
+# 也保留完整的 res 目录结构（可选，用于备份）
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:${PROJECT_NAME}>/res
+    COMMENT "Copying complete res directory as backup..."
+)
+
 # 设置VS调试器工作目录
 if(MSVC)
     set_property(TARGET ${PROJECT_NAME} PROPERTY 
-        VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()
 
@@ -436,6 +525,57 @@ endif()
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY 
     VS_STARTUP_PROJECT ${PROJECT_NAME}
 )
+
+# ========================================
+# 安装配置（用于打包发布）
+# ========================================
+
+# 设置安装目录
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install CACHE PATH "Installation Directory")
+
+# 安装可执行文件
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION .
+)
+
+# 安装 runtime 目录内容
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/runtime/
+    DESTINATION runtime
+)
+
+# 安装纹理文件
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/runtime/textures)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/runtime/textures/
+        DESTINATION textures
+    )
+endif()
+
+if(EXISTS ${CMAKE_SOURCE_DIR}/res/assets/textures)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/assets/textures/
+        DESTINATION textures
+    )
+endif()
+
+# 安装编译后的着色器（覆盖默认的）
+foreach(RENDERER ${RENDERERS})
+    if(EXISTS ${SHADER_OUTPUT_DIR}/${RENDERER})
+        install(DIRECTORY ${SHADER_OUTPUT_DIR}/${RENDERER}/
+            DESTINATION runtime/shaders/${RENDERER}
+        )
+    endif()
+endforeach()
+
+# 安装其他资源文件
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/
+    DESTINATION res
+    PATTERN ".gitignore" EXCLUDE
+)
+
+# Windows下可能需要的运行时库
+if(WIN32)
+    # Visual C++ 运行时通常由安装程序处理
+    # 如果需要，可以在这里添加特定的 DLL
+endif()
 
 # 组织源文件（Visual Studio/Xcode）
 source_group("Source Files" FILES src/main.cpp)
