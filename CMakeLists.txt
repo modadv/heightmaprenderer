@@ -21,13 +21,6 @@ add_subdirectory(external/bgfx.cmake)
 # 着色器编译配置
 # ========================================
 
-# shaderc工具将作为目标生成，获取其路径
-if(WIN32)
-    set(SHADERC_SUFFIX ".exe")
-else()
-    set(SHADERC_SUFFIX "")
-endif()
-
 # 设置着色器目录
 set(SHADER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders)
 set(SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders)
@@ -37,43 +30,20 @@ set(SHADER_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include/generated/shaders)
 file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 file(MAKE_DIRECTORY ${SHADER_INCLUDE_DIR})
 
-# 定义平台和渲染器配置
-if(WIN32)
-    set(SHADER_PLATFORM windows)
-    set(SHADER_PROFILES
-        "s_5_0:dx11"    # DirectX 11
-        "430:glsl"      # OpenGL
-        "spirv:spirv"   # Vulkan
-    )
-elseif(APPLE)
-    set(SHADER_PLATFORM osx)
-    set(SHADER_PROFILES
-        "metal:metal"   # Metal
-        "410:glsl"      # OpenGL
-        "spirv:spirv"   # Vulkan/MoltenVK
-    )
-elseif(UNIX)
-    set(SHADER_PLATFORM linux)
-    set(SHADER_PROFILES
-        "430:glsl"      # OpenGL
-        "spirv:spirv"   # Vulkan
-    )
-endif()
-
 # varying.def.sc文件路径
 set(VARYING_DEF ${SHADER_SOURCE_DIR}/varying.def.sc)
 
-# 着色器包含路径 - 添加bgfx的着色器包含目录
+# 着色器包含路径
 set(SHADER_INCLUDE_PATHS
     ${SHADER_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src  # bgfx内部着色器包含文件
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src
 )
 
 # 构建包含路径参数
 set(INCLUDE_ARGS "")
 foreach(INCLUDE_PATH ${SHADER_INCLUDE_PATHS})
-    list(APPEND INCLUDE_ARGS -i ${INCLUDE_PATH})
+    list(APPEND INCLUDE_ARGS -i "${INCLUDE_PATH}")
 endforeach()
 
 # 定义着色器列表
@@ -95,11 +65,7 @@ set(COMPUTE_SHADERS
 )
 
 # 函数：编译单个着色器
-function(compile_shader SHADER_NAME SHADER_TYPE PROFILE OUTPUT_DIR)
-    string(REPLACE ":" ";" PROFILE_PARTS ${PROFILE})
-    list(GET PROFILE_PARTS 0 PROFILE_VERSION)
-    list(GET PROFILE_PARTS 1 PROFILE_RENDERER)
-    
+function(compile_shader SHADER_NAME SHADER_TYPE RENDERER OUTPUT_DIR)
     # 确定着色器类型标记
     if(${SHADER_TYPE} STREQUAL "VERTEX")
         set(TYPE_FLAG vertex)
@@ -112,95 +78,150 @@ function(compile_shader SHADER_NAME SHADER_TYPE PROFILE OUTPUT_DIR)
         set(TYPE_PREFIX cs)
     endif()
     
+    # 根据渲染器和着色器类型设置正确的profile
+    if(${RENDERER} STREQUAL "dx11")
+        set(PLATFORM_NAME windows)
+        if(${SHADER_TYPE} STREQUAL "VERTEX")
+            set(PROFILE_VERSION vs_5_0)
+        elseif(${SHADER_TYPE} STREQUAL "FRAGMENT")
+            set(PROFILE_VERSION ps_5_0)
+        elseif(${SHADER_TYPE} STREQUAL "COMPUTE")
+            set(PROFILE_VERSION cs_5_0)
+        endif()
+    elseif(${RENDERER} STREQUAL "glsl")
+        if(WIN32)
+            set(PLATFORM_NAME windows)
+        elseif(APPLE)
+            set(PLATFORM_NAME osx)
+        else()
+            set(PLATFORM_NAME linux)
+        endif()
+        
+        if(${SHADER_TYPE} STREQUAL "COMPUTE")
+            set(PROFILE_VERSION 430)  # OpenGL 4.3 minimum for compute shaders
+        else()
+            if(APPLE)
+                set(PROFILE_VERSION 410)  # macOS OpenGL 4.1
+            else()
+                set(PROFILE_VERSION 440)  # Windows/Linux OpenGL 4.4
+            endif()
+        endif()
+    elseif(${RENDERER} STREQUAL "spirv")
+        if(WIN32)
+            set(PLATFORM_NAME windows)
+        elseif(APPLE)
+            set(PLATFORM_NAME osx)
+        else()
+            set(PLATFORM_NAME linux)
+        endif()
+        set(PROFILE_VERSION spirv)
+    elseif(${RENDERER} STREQUAL "metal")
+        set(PLATFORM_NAME osx)
+        set(PROFILE_VERSION metal)
+    endif()
+    
     # 输入和输出文件路径
     set(INPUT_FILE ${SHADER_SOURCE_DIR}/${SHADER_NAME}.sc)
-    set(OUTPUT_BIN ${OUTPUT_DIR}/${PROFILE_RENDERER}/${SHADER_NAME}.bin)
-    set(OUTPUT_HEADER ${SHADER_INCLUDE_DIR}/${PROFILE_RENDERER}/${SHADER_NAME}.bin.h)
+    set(OUTPUT_BIN ${OUTPUT_DIR}/${RENDERER}/${SHADER_NAME}.bin)
+    set(OUTPUT_HEADER ${SHADER_INCLUDE_DIR}/${RENDERER}/${SHADER_NAME}.bin.h)
     
     # 创建渲染器特定的输出目录
-    file(MAKE_DIRECTORY ${OUTPUT_DIR}/${PROFILE_RENDERER})
-    file(MAKE_DIRECTORY ${SHADER_INCLUDE_DIR}/${PROFILE_RENDERER})
+    file(MAKE_DIRECTORY ${OUTPUT_DIR}/${RENDERER})
+    file(MAKE_DIRECTORY ${SHADER_INCLUDE_DIR}/${RENDERER})
     
-    # 生成二进制文件的命令 - 使用shaderc目标
+    # 构建varyingdef参数（仅对顶点和片段着色器）
+    if(NOT ${SHADER_TYPE} STREQUAL "COMPUTE")
+        set(VARYINGDEF_ARG --varyingdef "${VARYING_DEF}")
+    else()
+        set(VARYINGDEF_ARG "")
+    endif()
+    
+    # 生成二进制文件的命令
     add_custom_command(
         OUTPUT ${OUTPUT_BIN}
         COMMAND $<TARGET_FILE:shaderc>
-            -f ${INPUT_FILE}
-            -o ${OUTPUT_BIN}
+            -f "${INPUT_FILE}"
+            -o "${OUTPUT_BIN}"
             --type ${TYPE_FLAG}
-            --platform ${SHADER_PLATFORM}
+            --platform ${PLATFORM_NAME}
             --profile ${PROFILE_VERSION}
             ${INCLUDE_ARGS}
-            $<$<NOT:$<STREQUAL:${SHADER_TYPE},COMPUTE>>:--varyingdef ${VARYING_DEF}>
+            ${VARYINGDEF_ARG}
             $<$<CONFIG:Debug>:--debug>
             $<$<CONFIG:Release>:-O 3>
         DEPENDS ${INPUT_FILE} ${VARYING_DEF} shaderc
-        COMMENT "Compiling ${SHADER_TYPE} shader ${SHADER_NAME} for ${PROFILE_RENDERER}"
+        COMMENT "Compiling ${SHADER_TYPE} shader ${SHADER_NAME} for ${RENDERER} (${PROFILE_VERSION})"
         VERBATIM
     )
     
-    # 生成C头文件的命令 - 使用shaderc目标
+    # 生成C头文件的命令
     add_custom_command(
         OUTPUT ${OUTPUT_HEADER}
         COMMAND $<TARGET_FILE:shaderc>
-            -f ${INPUT_FILE}
-            -o ${OUTPUT_HEADER}
+            -f "${INPUT_FILE}"
+            -o "${OUTPUT_HEADER}"
             --type ${TYPE_FLAG}
-            --platform ${SHADER_PLATFORM}
+            --platform ${PLATFORM_NAME}
             --profile ${PROFILE_VERSION}
-            --bin2c ${SHADER_NAME}_${PROFILE_RENDERER}
+            --bin2c ${SHADER_NAME}_${RENDERER}
             ${INCLUDE_ARGS}
-            $<$<NOT:$<STREQUAL:${SHADER_TYPE},COMPUTE>>:--varyingdef ${VARYING_DEF}>
+            ${VARYINGDEF_ARG}
             $<$<CONFIG:Debug>:--debug>
             $<$<CONFIG:Release>:-O 3>
         DEPENDS ${INPUT_FILE} ${VARYING_DEF} shaderc
-        COMMENT "Generating header for ${SHADER_TYPE} shader ${SHADER_NAME} for ${PROFILE_RENDERER}"
+        COMMENT "Generating header for ${SHADER_TYPE} shader ${SHADER_NAME} for ${RENDERER} (${PROFILE_VERSION})"
         VERBATIM
     )
     
     # 返回生成的文件列表
-    set(${SHADER_NAME}_${PROFILE_RENDERER}_OUTPUTS 
+    set(${SHADER_NAME}_${RENDERER}_OUTPUTS 
         ${OUTPUT_BIN} 
         ${OUTPUT_HEADER} 
         PARENT_SCOPE
     )
 endfunction()
 
+# 定义渲染器列表
+if(WIN32)
+    set(RENDERERS dx11 glsl spirv)
+elseif(APPLE)
+    set(RENDERERS metal glsl spirv)
+else()
+    set(RENDERERS glsl spirv)
+endif()
+
 # 编译所有着色器
 set(ALL_SHADER_OUTPUTS "")
 
 # 编译顶点着色器
 foreach(SHADER ${VERTEX_SHADERS})
-    foreach(PROFILE ${SHADER_PROFILES})
-        compile_shader(${SHADER} VERTEX ${PROFILE} ${SHADER_OUTPUT_DIR})
-        string(REPLACE ":" "_" PROFILE_VAR ${PROFILE})
-        string(REPLACE ":" ";" PROFILE_PARTS ${PROFILE})
-        list(GET PROFILE_PARTS 1 RENDERER)
+    foreach(RENDERER ${RENDERERS})
+        compile_shader(${SHADER} VERTEX ${RENDERER} ${SHADER_OUTPUT_DIR})
         list(APPEND ALL_SHADER_OUTPUTS ${${SHADER}_${RENDERER}_OUTPUTS})
     endforeach()
 endforeach()
 
 # 编译片段着色器
 foreach(SHADER ${FRAGMENT_SHADERS})
-    foreach(PROFILE ${SHADER_PROFILES})
-        compile_shader(${SHADER} FRAGMENT ${PROFILE} ${SHADER_OUTPUT_DIR})
-        string(REPLACE ":" "_" PROFILE_VAR ${PROFILE})
-        string(REPLACE ":" ";" PROFILE_PARTS ${PROFILE})
-        list(GET PROFILE_PARTS 1 RENDERER)
+    foreach(RENDERER ${RENDERERS})
+        compile_shader(${SHADER} FRAGMENT ${RENDERER} ${SHADER_OUTPUT_DIR})
         list(APPEND ALL_SHADER_OUTPUTS ${${SHADER}_${RENDERER}_OUTPUTS})
     endforeach()
 endforeach()
 
 # 编译计算着色器
 foreach(SHADER ${COMPUTE_SHADERS})
-    foreach(PROFILE ${SHADER_PROFILES})
-        # 检查profile是否支持计算着色器
-        string(REGEX MATCH "^(s_5_0|430|spirv|metal)" COMPUTE_SUPPORTED ${PROFILE})
+    foreach(RENDERER ${RENDERERS})
+        # 检查渲染器是否支持计算着色器
+        set(COMPUTE_SUPPORTED TRUE)
+        
+        # GLSL需要OpenGL 4.3+才支持计算着色器
+        if(${RENDERER} STREQUAL "glsl" AND APPLE)
+            set(COMPUTE_SUPPORTED FALSE)  # macOS OpenGL 4.1不支持计算着色器
+        endif()
+        
         if(COMPUTE_SUPPORTED)
-            compile_shader(${SHADER} COMPUTE ${PROFILE} ${SHADER_OUTPUT_DIR})
-            string(REPLACE ":" "_" PROFILE_VAR ${PROFILE})
-            string(REPLACE ":" ";" PROFILE_PARTS ${PROFILE})
-            list(GET PROFILE_PARTS 1 RENDERER)
+            compile_shader(${SHADER} COMPUTE ${RENDERER} ${SHADER_OUTPUT_DIR})
             list(APPEND ALL_SHADER_OUTPUTS ${${SHADER}_${RENDERER}_OUTPUTS})
         endif()
     endforeach()
@@ -299,11 +320,6 @@ target_link_libraries(${PROJECT_NAME}
     bx
 )
 
-# 如果需要使用bgfx的example-common库（如果它被构建）
-if(TARGET example-common)
-    target_link_libraries(${PROJECT_NAME} example-common)
-endif()
-
 # 确保着色器在主程序之前编译
 add_dependencies(${PROJECT_NAME} shaders)
 
@@ -384,8 +400,7 @@ message(STATUS "========================================")
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
-message(STATUS "Shader platform: ${SHADER_PLATFORM}")
-message(STATUS "Shader profiles: ${SHADER_PROFILES}")
+message(STATUS "Renderers: ${RENDERERS}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(STATUS "Shader output: ${SHADER_OUTPUT_DIR}")
