@@ -33,11 +33,12 @@ file(MAKE_DIRECTORY ${SHADER_INCLUDE_DIR})
 # varying.def.sc文件路径
 set(VARYING_DEF ${SHADER_SOURCE_DIR}/varying.def.sc)
 
-# 着色器包含路径
+# 着色器包含路径 - 确保顺序正确，bgfx的路径在前
 set(SHADER_INCLUDE_PATHS
-    ${SHADER_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/common
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src      # bgfx 内部着色器头文件（优先）
+    ${SHADER_SOURCE_DIR}                                          # 项目的着色器目录
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common                        # common.sh 和 shaderlib.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/examples/common  # bgfx examples common
 )
 
 # 构建包含路径参数
@@ -292,15 +293,29 @@ add_executable(${PROJECT_NAME}
     ${PS_SOURCES}
 )
 
-# 设置包含目录
+# 设置包含目录 - 添加第三方库路径
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common
     ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bimg/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty       # bgfx 第三方库根目录
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/dear-imgui  # Dear ImGui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/meshoptimizer  # meshoptimizer
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/stb  # STB libraries
     ${SHADER_INCLUDE_DIR}  # 包含生成的着色器头文件
 )
+
+# 如果 bgfx.cmake 有自己的第三方库位置，也添加这些路径
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/dear-imgui
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/meshoptimizer
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/stb
+    )
+endif()
 
 # 平台特定的包含目录
 if(WIN32)
@@ -313,12 +328,48 @@ elseif(APPLE)
     )
 endif()
 
+# 添加预处理器定义
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    # Entry 系统需要的定义
+    ENTRY_CONFIG_IMPLEMENT_MAIN=1
+    
+    # 根据配置设置调试定义
+    $<$<CONFIG:Debug>:BX_CONFIG_DEBUG=1>
+    $<$<CONFIG:Release>:BX_CONFIG_DEBUG=0>
+)
+
+# 平台特定的预处理器定义
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _WIN32
+        _WIN64
+        _CRT_SECURE_NO_WARNINGS
+        __STDC_FORMAT_MACROS
+    )
+elseif(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        __APPLE__
+    )
+elseif(UNIX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        __linux__
+    )
+endif()
+
 # 链接bgfx库
 target_link_libraries(${PROJECT_NAME}
     bgfx
     bimg
     bx
 )
+
+# 如果bgfx.cmake构建了第三方库，链接它们
+if(TARGET dear-imgui)
+    target_link_libraries(${PROJECT_NAME} dear-imgui)
+endif()
+if(TARGET meshoptimizer)
+    target_link_libraries(${PROJECT_NAME} meshoptimizer)
+endif()
 
 # 确保着色器在主程序之前编译
 add_dependencies(${PROJECT_NAME} shaders)
@@ -328,8 +379,11 @@ if(WIN32)
     target_link_libraries(${PROJECT_NAME}
         psapi
     )
+    # 注意：Windows GUI应用程序的入口点设置
+    # 由于使用了 ENTRY_CONFIG_IMPLEMENT_MAIN，应该使用控制台子系统
     set_target_properties(${PROJECT_NAME} PROPERTIES 
-        LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+        LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+        LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE"
     )
 endif()
 
