@@ -703,7 +703,7 @@ namespace
 					m_showLoadTime = true;
 
 					// 更新DMap路径
-					m_dmap.pathToFile = m_heightmapPath;
+					m_dmap.pathToFile = bx::FilePath(m_heightmapPath);
 
 					// 清理旧的纹理资源
 					if (bgfx::isValid(m_textures[TEXTURE_DMAP]))
