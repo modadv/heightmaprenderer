@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.14)
 add_library(terrain-renderer STATIC
     src/renderer.cpp
     src/renderer_impl.cpp
+    src/internal/context.cpp
+    src/internal/heightmap_loader.cpp
 )
 
 # 设置包含目录
@@ -16,7 +18,7 @@ target_include_directories(terrain-renderer
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# 链接bgfx等依赖（从父项目继承）
+# 链接bgfx等依赖
 target_link_libraries(terrain-renderer 
     PRIVATE
         bgfx
@@ -24,7 +26,7 @@ target_link_libraries(terrain-renderer
         bx
 )
 
-# 添加父项目的包含路径（暂时需要）
+# 添加父项目的包含路径
 target_include_directories(terrain-renderer PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/common

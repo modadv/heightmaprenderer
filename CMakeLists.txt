@@ -612,3 +612,72 @@ message(STATUS "Output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(STATUS "Shader output: ${SHADER_OUTPUT_DIR}")
 message(STATUS "Shader headers: ${SHADER_INCLUDE_DIR}")
 message(STATUS "========================================")
+
+# 在主CMakeLists.txt的末尾添加
+# ========================================
+# 库测试程序（可选）
+# ========================================
+option(BUILD_TERRAIN_LIB_TESTS "Build terrain library tests" ON)
+# ========================================
+# 库测试程序（可选）
+# ========================================
+option(BUILD_TERRAIN_LIB_TESTS "Build terrain library tests" ON)
+
+if(BUILD_TERRAIN_LIB_TESTS)
+    # 01 - 基础测试
+    add_executable(01_test_basic examples/01_test_basic.cpp)
+    target_link_libraries(01_test_basic 
+        terrain-renderer
+        bgfx bimg bx
+    )
+    # 添加包含路径
+    target_include_directories(01_test_basic PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/include
+    )
+    if(WIN32)
+        target_link_libraries(01_test_basic psapi)
+    endif()
+    set_target_properties(01_test_basic PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    
+    # 02 - 渲染上下文测试
+    add_executable(02_test_render examples/02_test_render.cpp)
+    target_link_libraries(02_test_render 
+        terrain-renderer
+        bgfx bimg bx
+    )
+    target_include_directories(02_test_render PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/include
+    )
+    if(WIN32)
+        target_link_libraries(02_test_render psapi)
+    endif()
+    set_target_properties(02_test_render PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    
+    # 03 - 高度图加载测试
+    add_executable(03_test_heightmap examples/03_test_heightmap.cpp)
+    target_link_libraries(03_test_heightmap 
+        terrain-renderer
+        bgfx bimg bx
+    )
+    target_include_directories(03_test_heightmap PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/include
+    )
+    if(WIN32)
+        target_link_libraries(03_test_heightmap psapi)
+    endif()
+    set_target_properties(03_test_heightmap PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    
+    # 复制测试需要的纹理文件
+    add_custom_command(TARGET 03_test_heightmap POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/textures 
+        $<TARGET_FILE_DIR:03_test_heightmap>/textures
+        COMMENT "Copying textures for heightmap test..."
+    )
+endif()
