@@ -45,6 +45,11 @@ set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/bgfx.cmake)
 
 # ========================================
+# 添加terrain-renderer库
+# ========================================
+add_subdirectory(lib)
+
+# ========================================
 # 着色器编译配置
 # ========================================
 
@@ -448,6 +453,7 @@ target_link_libraries(${PROJECT_NAME}
     bgfx    # bgfx 图形库
     bimg    # bimg 图像处理库
     bx      # bx 基础工具库
+    terrain-renderer  # 高度图/地形渲染
 )
 
 # 如果 bgfx.cmake 构建了第三方库目标，链接它们
