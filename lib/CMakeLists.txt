@@ -7,6 +7,7 @@ add_library(terrain-renderer STATIC
     src/renderer_impl.cpp
     src/internal/context.cpp
     src/internal/heightmap_loader.cpp
+    src/internal/simple_terrain.cpp
 )
 
 # 设置包含目录

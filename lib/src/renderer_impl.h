@@ -10,7 +10,8 @@ namespace terrain {
 
 namespace internal {
     class RenderContext;
-    class HeightmapData;  // 前向声明
+    class HeightmapData;
+    class SimpleTerrain;  // 添加前向声明
 }
 
 class RendererImpl {
@@ -45,6 +46,9 @@ private:
     // 高度图数据
     std::unique_ptr<internal::HeightmapData> m_heightmap;
     
+    // 地形渲染器
+    std::unique_ptr<internal::SimpleTerrain> m_terrain;  // 添加这个
+    
     // 纹理句柄
     bgfx::TextureHandle m_heightmapTexture = BGFX_INVALID_HANDLE;
     bgfx::TextureHandle m_slopeMapTexture = BGFX_INVALID_HANDLE;
@@ -56,8 +60,8 @@ private:
     
     // 渲染状态
     bool m_wireframe = false;
-    float m_scaleH = 1.0f;
-    float m_scaleV = 1.0f;
+    float m_scaleH = 100.0f;
+    float m_scaleV = 30.0f;
     
     // 矩阵（4x4）
     float m_viewMatrix[16];

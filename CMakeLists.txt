@@ -680,4 +680,28 @@ if(BUILD_TERRAIN_LIB_TESTS)
         $<TARGET_FILE_DIR:03_test_heightmap>/textures
         COMMENT "Copying textures for heightmap test..."
     )
+
+    # 04 - 可视化测试
+    add_executable(04_test_visual examples/04_test_visual.cpp)
+    target_link_libraries(04_test_visual 
+        terrain-renderer
+        bgfx bimg bx
+    )
+    target_include_directories(04_test_visual PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/include
+    )
+    if(WIN32)
+        target_link_libraries(04_test_visual psapi)
+    endif()
+    set_target_properties(04_test_visual PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    
+    # 复制纹理文件
+    add_custom_command(TARGET 04_test_visual POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/runtime/textures 
+        $<TARGET_FILE_DIR:04_test_visual>/textures
+        COMMENT "Copying textures for visual test..."
+    )
 endif()

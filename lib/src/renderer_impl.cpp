@@ -2,6 +2,7 @@
 #include "renderer_impl.h"
 #include "internal/context.h"
 #include "internal/heightmap_loader.h"
+#include "internal/simple_terrain.h"
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
 #include <cstdio>
@@ -13,7 +14,8 @@ namespace terrain {
 
 RendererImpl::RendererImpl() 
     : m_context(std::make_unique<internal::RenderContext>())
-    , m_heightmap(std::make_unique<internal::HeightmapData>()) {
+    , m_heightmap(std::make_unique<internal::HeightmapData>())
+    , m_terrain(std::make_unique<internal::SimpleTerrain>()) {
     // 初始化单位矩阵
     bx::mtxIdentity(m_viewMatrix);
     bx::mtxIdentity(m_projMatrix);
@@ -41,6 +43,15 @@ bool RendererImpl::Initialize(const Config* config) {
         return false;
     }
     
+    // 初始化地形渲染器
+    if (!m_terrain->Initialize()) {
+        m_lastError = "Failed to initialize terrain renderer";
+        return false;
+    }
+    
+    // 设置默认地形缩放
+    m_terrain->SetTerrainScale(m_scaleH, m_scaleV, m_scaleH);
+    
     // 设置调试模式
     if (m_config.debug) {
         bgfx::setDebug(BGFX_DEBUG_TEXT);
@@ -58,6 +69,9 @@ void RendererImpl::Shutdown() {
     }
     
     printf("[RendererImpl] Shutting down\n");
+    
+    // 关闭地形渲染器
+    m_terrain->Shutdown();
     
     // 清理纹理资源
     if (bgfx::isValid(m_heightmapTexture)) {
@@ -106,6 +120,14 @@ bool RendererImpl::LoadHeightmap(const std::string& path) {
         m_lastError = "Failed to create slope map texture";
         return false;
     }
+    
+    // 更新地形渲染器的纹理
+    m_terrain->SetHeightmapTexture(m_heightmapTexture);
+    m_terrain->SetSlopeMapTexture(m_slopeMapTexture);
+    
+    // 根据高度图的宽高比调整地形缩放
+    float aspectRatio = m_heightmap->GetAspectRatio();
+    m_terrain->SetTerrainScale(m_scaleH * aspectRatio, m_scaleV, m_scaleH);
     
     printf("[RendererImpl] Heightmap loaded successfully: %dx%d, aspect ratio: %.2f\n",
            m_heightmap->GetWidth(), m_heightmap->GetHeight(), 
@@ -229,8 +251,8 @@ void RendererImpl::Draw() {
         return;
     }
     
-    // 临时：绘制一个简单的东西来验证渲染管线工作
-    // TODO: 实际的地形渲染
+    // 使用SimpleTerrain进行渲染
+    m_terrain->Draw(m_viewMatrix, m_projMatrix);
 }
 
 void RendererImpl::EndFrame() {
@@ -247,12 +269,20 @@ void RendererImpl::SetWireframe(bool enable) {
     }
     
     m_wireframe = enable;
+    m_terrain->SetWireframe(enable);
     bgfx::setDebug(m_wireframe ? BGFX_DEBUG_WIREFRAME : BGFX_DEBUG_NONE);
 }
 
 void RendererImpl::SetScale(float horizontalScale, float verticalScale) {
     m_scaleH = horizontalScale;
     m_scaleV = verticalScale;
+    
+    if (m_initialized && m_terrain) {
+        // 考虑高度图的宽高比
+        float aspectRatio = m_heightmap ? m_heightmap->GetAspectRatio() : 1.0f;
+        m_terrain->SetTerrainScale(m_scaleH * aspectRatio, m_scaleV, m_scaleH);
+    }
+    
     printf("[RendererImpl] Scale set to: %.2f x %.2f\n", m_scaleH, m_scaleV);
 }
 
