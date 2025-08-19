@@ -1,3 +1,5 @@
+#pragma once
+
 namespace heightmap {
 namespace types {
     enum
@@ -43,7 +45,6 @@ namespace types {
     };
 
     
-	constexpr int32_t kNumVec4 = 2;
 
 }
 }

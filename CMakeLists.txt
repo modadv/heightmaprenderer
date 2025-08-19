@@ -296,6 +296,8 @@ add_custom_target(shaders ALL DEPENDS ${ALL_SHADER_OUTPUTS})
 # ========================================
 set(HEIGHTMAP_SOURCE_FILES
     src/heightmap/patch_tables.cpp
+    src/heightmap/uniforms.cpp
+    src/heightmap/heightmap_renderer.cpp
 )
 
 # 定义通用源文件列表（所有平台都需要的文件）
