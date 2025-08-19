@@ -45,11 +45,6 @@ set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/bgfx.cmake)
 
 # ========================================
-# 添加terrain-renderer库
-# ========================================
-add_subdirectory(lib)
-
-# ========================================
 # 着色器编译配置
 # ========================================
 
@@ -299,6 +294,9 @@ add_custom_target(shaders ALL DEPENDS ${ALL_SHADER_OUTPUTS})
 # ========================================
 # 主程序源文件收集
 # ========================================
+set(HEIGHTMAP_SOURCE_FILES
+    src/heightmap/patch_tables.cpp
+)
 
 # 定义通用源文件列表（所有平台都需要的文件）
 set(COMMON_SOURCE_FILES
@@ -365,6 +363,7 @@ add_executable(${PROJECT_NAME}
     ${IMGUI_SOURCES}                 # ImGui 源文件
     ${NANOVG_SOURCES}                # NanoVG 源文件
     ${PS_SOURCES}                    # 粒子系统源文件
+    ${HEIGHTMAP_SOURCE_FILES}        # 高度图模块源文件
 )
 
 # ========================================
@@ -453,7 +452,6 @@ target_link_libraries(${PROJECT_NAME}
     bgfx    # bgfx 图形库
     bimg    # bimg 图像处理库
     bx      # bx 基础工具库
-    terrain-renderer  # 高度图/地形渲染
 )
 
 # 如果 bgfx.cmake 构建了第三方库目标，链接它们
@@ -612,96 +610,3 @@ message(STATUS "Output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(STATUS "Shader output: ${SHADER_OUTPUT_DIR}")
 message(STATUS "Shader headers: ${SHADER_INCLUDE_DIR}")
 message(STATUS "========================================")
-
-# 在主CMakeLists.txt的末尾添加
-# ========================================
-# 库测试程序（可选）
-# ========================================
-option(BUILD_TERRAIN_LIB_TESTS "Build terrain library tests" ON)
-# ========================================
-# 库测试程序（可选）
-# ========================================
-option(BUILD_TERRAIN_LIB_TESTS "Build terrain library tests" ON)
-
-if(BUILD_TERRAIN_LIB_TESTS)
-    # 01 - 基础测试
-    add_executable(01_test_basic examples/01_test_basic.cpp)
-    target_link_libraries(01_test_basic 
-        terrain-renderer
-        bgfx bimg bx
-    )
-    # 添加包含路径
-    target_include_directories(01_test_basic PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/include
-    )
-    if(WIN32)
-        target_link_libraries(01_test_basic psapi)
-    endif()
-    set_target_properties(01_test_basic PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    
-    # 02 - 渲染上下文测试
-    add_executable(02_test_render examples/02_test_render.cpp)
-    target_link_libraries(02_test_render 
-        terrain-renderer
-        bgfx bimg bx
-    )
-    target_include_directories(02_test_render PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/include
-    )
-    if(WIN32)
-        target_link_libraries(02_test_render psapi)
-    endif()
-    set_target_properties(02_test_render PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    
-    # 03 - 高度图加载测试
-    add_executable(03_test_heightmap examples/03_test_heightmap.cpp)
-    target_link_libraries(03_test_heightmap 
-        terrain-renderer
-        bgfx bimg bx
-    )
-    target_include_directories(03_test_heightmap PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/include
-    )
-    if(WIN32)
-        target_link_libraries(03_test_heightmap psapi)
-    endif()
-    set_target_properties(03_test_heightmap PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    
-    # 复制测试需要的纹理文件
-    add_custom_command(TARGET 03_test_heightmap POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/res/runtime/textures 
-        $<TARGET_FILE_DIR:03_test_heightmap>/textures
-        COMMENT "Copying textures for heightmap test..."
-    )
-
-    # 04 - 可视化测试
-    add_executable(04_test_visual examples/04_test_visual.cpp)
-    target_link_libraries(04_test_visual 
-        terrain-renderer
-        bgfx bimg bx
-    )
-    target_include_directories(04_test_visual PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/include
-    )
-    if(WIN32)
-        target_link_libraries(04_test_visual psapi)
-    endif()
-    set_target_properties(04_test_visual PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    
-    # 复制纹理文件
-    add_custom_command(TARGET 04_test_visual POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/res/runtime/textures 
-        $<TARGET_FILE_DIR:04_test_visual>/textures
-        COMMENT "Copying textures for visual test..."
-    )
-endif()

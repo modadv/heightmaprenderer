@@ -1,3 +1,6 @@
+#include "heightmap/patch_tables.h"
+#include "heightmap/types.h"
+
 #include <bx/allocator.h>
 #include <bx/debug.h>
 #include <bx/file.h>
@@ -12,258 +15,6 @@
 
 namespace
 {
-	static const char* s_shaderOptions[] =
-	{
-		"Normal",
-		"Diffuse"
-	};
-
-	static const float s_verticesL0[] =
-	{
-		0.0f, 0.0f,
-		1.0f, 0.0f,
-		0.0f, 1.0f,
-	};
-
-	static const uint32_t s_indexesL0[] = { 0u, 1u, 2u };
-
-	static const float s_verticesL1[] =
-	{
-		0.0f, 1.0f,
-		0.5f, 0.5f,
-		0.0f, 0.5f,
-		0.0f, 0.0f,
-		0.5f, 0.0f,
-		1.0f, 0.0f,
-	};
-
-	static const uint32_t s_indexesL1[] =
-	{
-		1u, 0u, 2u,
-		1u, 2u, 3u,
-		1u, 3u, 4u,
-		1u, 4u, 5u,
-	};
-
-	static const float s_verticesL2[] =
-	{
-		0.25f, 0.75f,
-		0.0f,  1.0f,
-		0.0f,  0.75f,
-		0.0f,  0.5f,
-		0.25f, 0.5f,
-		0.5f,  0.5f,
-
-		0.25f, 0.25f,
-		0.0f,  0.25f,
-		0.0f,  0.0f,
-		0.25f, 0.0f,
-		0.5f,  0.0f,
-		0.5f,  0.25f,
-		0.75f, 0.25f,
-		0.75f, 0.0f,
-		1.0f,  0.0f,
-	};
-
-	static const uint32_t s_indexesL2[] =
-	{
-		0u, 1u, 2u,
-		0u, 2u, 3u,
-		0u, 3u, 4u,
-		0u, 4u, 5u,
-
-		6u, 5u, 4u,
-		6u, 4u, 3u,
-		6u, 3u, 7u,
-		6u, 7u, 8u,
-
-		6u, 8u, 9u,
-		6u, 9u, 10u,
-		6u, 10u, 11u,
-		6u, 11u, 5u,
-
-		12u, 5u, 11u,
-		12u, 11u, 10u,
-		12u, 10u, 13u,
-		12u, 13u, 14u,
-	};
-
-	static const float s_verticesL3[] =
-	{
-		0.25f * 0.5f, 0.75f * 0.5f + 0.5f,
-		0.0f * 0.5f, 1.0f * 0.5f + 0.5f,
-		0.0f * 0.5f, 0.75f * 0.5f + 0.5f,
-		0.0f * 0.5f , 0.5f * 0.5f + 0.5f,
-		0.25f * 0.5f, 0.5f * 0.5f + 0.5f,
-		0.5f * 0.5f, 0.5f * 0.5f + 0.5f,
-		0.25f * 0.5f, 0.25f * 0.5f + 0.5f,
-		0.0f * 0.5f, 0.25f * 0.5f + 0.5f,
-		0.0f * 0.5f, 0.0f * 0.5f + 0.5f,
-		0.25f * 0.5f, 0.0f * 0.5f + 0.5f,
-		0.5f * 0.5f, 0.0f * 0.5f + 0.5f,
-		0.5f * 0.5f, 0.25f * 0.5f + 0.5f,
-		0.75f * 0.5f, 0.25f * 0.5f + 0.5f,
-		0.75f * 0.5f, 0.0f * 0.5f + 0.5f,
-		1.0f * 0.5f, 0.0f * 0.5f + 0.5f,        //14
-
-		0.375f, 0.375f,
-		0.25f, 0.375f,
-		0.25f, 0.25f,
-		0.375f, 0.25f,
-		0.5f, 0.25f,
-		0.5f, 0.375f,    //20
-
-		0.125f, 0.375f,
-		0.0f, 0.375f,
-		0.0f, 0.25f,
-		0.125f, 0.25f,    //24
-
-		0.125f, 0.125f,
-		0.0f, 0.125f,
-		0.0f, 0.0f,
-		0.125f, 0.0f,
-		0.25f, 0.0f,
-		0.25f, 0.125f,    //30
-
-		0.375f, 0.125f,
-		0.375f, 0.0f,
-		0.5f, 0.0f,
-		0.5f, 0.125f,    //34
-
-		0.625f, 0.375f,
-		0.625f, 0.25f,
-		0.75f, 0.25f,    //37
-
-		0.625f, 0.125f,
-		0.625f, 0.0f,
-		0.75f, 0.0f,
-		0.75f, 0.125f,    //41
-
-		0.875f, 0.125f,
-		0.875f, 0.0f,
-		1.0f, 0.0f,    //44
-	};
-
-	static const uint32_t s_indexesL3[] =
-	{
-		0u, 1u, 2u,
-		0u, 2u, 3u,
-		0u, 3u, 4u,
-		0u, 4u, 5u,
-
-		6u, 5u, 4u,
-		6u, 4u, 3u,
-		6u, 3u, 7u,
-		6u, 7u, 8u,
-
-		6u, 8u, 9u,
-		6u, 9u, 10u,
-		6u, 10u, 11u,
-		6u, 11u, 5u,
-
-		12u, 5u, 11u,
-		12u, 11u, 10u,
-		12u, 10u, 13u,
-		12u, 13u, 14u,        //End fo first big triangle
-
-		15u, 14u, 13u,
-		15u, 13u, 10u,
-		15u, 10u, 16u,
-		15u, 16u, 17u,
-		15u, 17u, 18u,
-		15u, 18u, 19u,
-		15u, 19u, 20u,
-		15u, 20u, 14u,
-
-		21u, 10u, 9u,
-		21u, 9u, 8u,
-		21u, 8u, 22u,
-		21u, 22u, 23u,
-		21u, 23u, 24u,
-		21u, 24u, 17u,
-		21u, 17u, 16u,
-		21u, 16u, 10u,
-
-		25u, 17u, 24u,
-		25u, 24u, 23u,
-		25u, 23u, 26u,
-		25u, 26u, 27u,
-		25u, 27u, 28u,
-		25u, 28u, 29u,
-		25u, 29u, 30u,
-		25u, 30u, 17u,
-
-		31u, 19u, 18u,
-		31u, 18u, 17u,
-		31u, 17u, 30u,
-		31u, 30u, 29u,
-		31u, 29u, 32u,
-		31u, 32u, 33u,
-		31u, 33u, 34u,
-		31u, 34u, 19u,
-
-		35u, 14u, 20u,
-		35u, 20u, 19u,
-		35u, 19u, 36u,
-		35u, 36u, 37u,
-
-		38u, 37u, 36u,
-		38u, 36u, 19u,
-		38u, 19u, 34u,
-		38u, 34u, 33u,
-		38u, 33u, 39u,
-		38u, 39u, 40u,
-		38u, 40u, 41u,
-		38u, 41u, 37u,
-
-		42u, 37u, 41u,
-		42u, 41u, 40u,
-		42u, 40u, 43u,
-		42u, 43u, 44u,
-	};
-
-	enum
-	{
-		PROGRAM_TERRAIN_NORMAL,
-		PROGRAM_TERRAIN,
-
-		SHADING_COUNT
-	};
-
-	enum
-	{
-		BUFFER_SUBD
-	};
-
-	enum
-	{
-		PROGRAM_SUBD_CS_LOD,
-		PROGRAM_UPDATE_INDIRECT,
-		PROGRAM_INIT_INDIRECT,
-		PROGRAM_UPDATE_DRAW,
-		PROGRAM_GENERATE_SMAP,
-
-		PROGRAM_COUNT
-	};
-
-	enum
-	{
-		TERRAIN_DMAP_SAMPLER,
-		TERRAIN_SMAP_SAMPLER,
-		TERRAIN_DIFFUSE_SAMPLER,
-
-		SAMPLER_COUNT
-	};
-
-	enum
-	{
-		TEXTURE_DMAP,
-		TEXTURE_SMAP,
-		TEXTURE_DIFFUSE,
-
-		TEXTURE_COUNT
-	};
-
 	constexpr int32_t kNumVec4 = 2;
 
 	struct Uniforms
@@ -374,7 +125,7 @@ namespace
 
 			m_dmap = { m_heightmapPath, 0.80f };
 			m_computeThreadCount = 5;
-			m_shading = PROGRAM_TERRAIN;
+			m_shading = heightmap::types::PROGRAM_TERRAIN;
 			m_primitivePixelLengthTarget = 1.0f;
 			m_fovy = 60.0f;
 			m_pingPong = 0;
@@ -444,22 +195,22 @@ namespace
 			bgfx::destroy(m_instancedGeometryVertices);
 			bgfx::destroy(u_smapParams);
 
-			for (uint32_t i = 0; i < PROGRAM_COUNT; ++i)
+			for (uint32_t i = 0; i < heightmap::types::PROGRAM_COUNT; ++i)
 			{
 				bgfx::destroy(m_programsCompute[i]);
 			}
 
-			for (uint32_t i = 0; i < SHADING_COUNT; ++i)
+			for (uint32_t i = 0; i < heightmap::types::SHADING_COUNT; ++i)
 			{
 				bgfx::destroy(m_programsDraw[i]);
 			}
 
-			for (uint32_t i = 0; i < SAMPLER_COUNT; ++i)
+			for (uint32_t i = 0; i < heightmap::types::SAMPLER_COUNT; ++i)
 			{
 				bgfx::destroy(m_samplers[i]);
 			}
 
-			for (uint32_t i = 0; i < TEXTURE_COUNT; ++i)
+			for (uint32_t i = 0; i < heightmap::types::TEXTURE_COUNT; ++i)
 			{
 				bgfx::destroy(m_textures[i]);
 			}
@@ -583,9 +334,9 @@ namespace
 
 				if (ImGui::Checkbox("Use GPU SMap Generation", &m_useGpuSmap))
 				{
-					if (bgfx::isValid(m_textures[TEXTURE_SMAP]))
+					if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_SMAP]))
 					{
-						bgfx::destroy(m_textures[TEXTURE_SMAP]);
+						bgfx::destroy(m_textures[heightmap::types::TEXTURE_SMAP]);
 					}
 
 					m_loadStartTime = bx::getHPCounter();
@@ -600,16 +351,16 @@ namespace
 
 				if (ImGui::Button("Compare CPU/GPU Performance", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					if (bgfx::isValid(m_textures[TEXTURE_SMAP]))
+					if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_SMAP]))
 					{
-						bgfx::destroy(m_textures[TEXTURE_SMAP]);
+						bgfx::destroy(m_textures[heightmap::types::TEXTURE_SMAP]);
 					}
 					loadSmapTextureGPU();
 
-					bgfx::destroy(m_textures[TEXTURE_SMAP]);
+					bgfx::destroy(m_textures[heightmap::types::TEXTURE_SMAP]);
 					loadSmapTexture();
 
-					bgfx::destroy(m_textures[TEXTURE_SMAP]);
+					bgfx::destroy(m_textures[heightmap::types::TEXTURE_SMAP]);
 					if (m_useGpuSmap) {
 						loadSmapTextureGPU();
 					}
@@ -686,7 +437,7 @@ namespace
 					m_uniforms.gpuSubd = float(gpuSlider);
 				}
 
-				ImGui::Combo("Shading", &m_shading, s_shaderOptions, 2);
+				ImGui::Combo("Shading", &m_shading, heightmap::tables::s_shaderOptions, 2);
 
 				ImGui::Text("Some variables require rebuilding the subdivide buffers and causes a stutter.");
 
@@ -706,19 +457,19 @@ namespace
 					m_dmap.pathToFile = bx::FilePath(m_heightmapPath);
 
 					// 清理旧的纹理资源
-					if (bgfx::isValid(m_textures[TEXTURE_DMAP]))
+					if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_DMAP]))
 					{
-						bgfx::destroy(m_textures[TEXTURE_DMAP]);
+						bgfx::destroy(m_textures[heightmap::types::TEXTURE_DMAP]);
 					}
 
-					if (bgfx::isValid(m_textures[TEXTURE_SMAP]))
+					if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_SMAP]))
 					{
-						bgfx::destroy(m_textures[TEXTURE_SMAP]);
+						bgfx::destroy(m_textures[heightmap::types::TEXTURE_SMAP]);
 					}
 
-					if (bgfx::isValid(m_textures[TEXTURE_DIFFUSE]))
+					if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_DIFFUSE]))
 					{
-						bgfx::destroy(m_textures[TEXTURE_DIFFUSE]);
+						bgfx::destroy(m_textures[heightmap::types::TEXTURE_DIFFUSE]);
 					}
 
 					// 重新加载纹理
@@ -774,8 +525,8 @@ namespace
 					bgfx::destroy(m_instancedGeometryVertices);
 					bgfx::destroy(m_instancedGeometryIndices);
 
-					bgfx::destroy(m_bufferSubd[BUFFER_SUBD]);
-					bgfx::destroy(m_bufferSubd[BUFFER_SUBD + 1]);
+					bgfx::destroy(m_bufferSubd[heightmap::types::BUFFER_SUBD]);
+					bgfx::destroy(m_bufferSubd[heightmap::types::BUFFER_SUBD + 1]);
 					bgfx::destroy(m_bufferCulledSubd);
 
 					loadInstancedGeometryBuffers();
@@ -787,7 +538,7 @@ namespace
 					bgfx::setBuffer(3, m_dispatchIndirect, bgfx::Access::ReadWrite);
 					bgfx::setBuffer(4, m_bufferCounter, bgfx::Access::ReadWrite);
 					bgfx::setBuffer(8, m_bufferSubd[1 - m_pingPong], bgfx::Access::ReadWrite);
-					bgfx::dispatch(0, m_programsCompute[PROGRAM_INIT_INDIRECT], 1, 1, 1);
+					bgfx::dispatch(0, m_programsCompute[heightmap::types::PROGRAM_INIT_INDIRECT], 1, 1, 1);
 
 
 					m_restart = false;
@@ -797,7 +548,7 @@ namespace
 					// update batch
 					bgfx::setBuffer(3, m_dispatchIndirect, bgfx::Access::ReadWrite);
 					bgfx::setBuffer(4, m_bufferCounter, bgfx::Access::ReadWrite);
-					bgfx::dispatch(0, m_programsCompute[PROGRAM_UPDATE_INDIRECT], 1, 1, 1);
+					bgfx::dispatch(0, m_programsCompute[heightmap::types::PROGRAM_UPDATE_INDIRECT], 1, 1, 1);
 				}
 
 				bgfx::setBuffer(1, m_bufferSubd[m_pingPong], bgfx::Access::ReadWrite);
@@ -808,12 +559,12 @@ namespace
 				bgfx::setBuffer(8, m_bufferSubd[1 - m_pingPong], bgfx::Access::Read);
 				bgfx::setTransform(model);
 
-				bgfx::setTexture(0, m_samplers[TERRAIN_DMAP_SAMPLER], m_textures[TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+				bgfx::setTexture(0, m_samplers[heightmap::types::TERRAIN_DMAP_SAMPLER], m_textures[heightmap::types::TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
 
 				m_uniforms.submit();
 
 				// update the subd buffer
-				bgfx::dispatch(0, m_programsCompute[PROGRAM_SUBD_CS_LOD], m_dispatchIndirect, 1);
+				bgfx::dispatch(0, m_programsCompute[heightmap::types::PROGRAM_SUBD_CS_LOD], m_dispatchIndirect, 1);
 
 				// update draw
 				bgfx::setBuffer(3, m_dispatchIndirect, bgfx::Access::ReadWrite);
@@ -821,20 +572,20 @@ namespace
 
 				m_uniforms.submit();
 
-				bgfx::dispatch(1, m_programsCompute[PROGRAM_UPDATE_DRAW], 1, 1, 1);
+				bgfx::dispatch(1, m_programsCompute[heightmap::types::PROGRAM_UPDATE_DRAW], 1, 1, 1);
 
 				// render the terrain
-				bgfx::setTexture(0, m_samplers[TERRAIN_DMAP_SAMPLER], m_textures[TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
-				bgfx::setTexture(1, m_samplers[TERRAIN_SMAP_SAMPLER], m_textures[TEXTURE_SMAP], BGFX_SAMPLER_MIN_ANISOTROPIC | BGFX_SAMPLER_MAG_ANISOTROPIC);
+				bgfx::setTexture(0, m_samplers[heightmap::types::TERRAIN_DMAP_SAMPLER], m_textures[heightmap::types::TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+				bgfx::setTexture(1, m_samplers[heightmap::types::TERRAIN_SMAP_SAMPLER], m_textures[heightmap::types::TEXTURE_SMAP], BGFX_SAMPLER_MIN_ANISOTROPIC | BGFX_SAMPLER_MAG_ANISOTROPIC);
 
-				if (bgfx::isValid(m_textures[TEXTURE_DIFFUSE]))
+				if (bgfx::isValid(m_textures[heightmap::types::TEXTURE_DIFFUSE]))
 				{
 					uint32_t diffuseSamplerFlags = BGFX_SAMPLER_UVW_MIRROR
 						| BGFX_SAMPLER_MIN_ANISOTROPIC
 						| BGFX_SAMPLER_MAG_ANISOTROPIC
 						| BGFX_SAMPLER_MIP_POINT;
 
-					bgfx::setTexture(5, m_samplers[TERRAIN_DIFFUSE_SAMPLER], m_textures[TEXTURE_DIFFUSE], diffuseSamplerFlags);
+					bgfx::setTexture(5, m_samplers[heightmap::types::TERRAIN_DIFFUSE_SAMPLER], m_textures[heightmap::types::TEXTURE_DIFFUSE], diffuseSamplerFlags);
 				}
 
 				bgfx::setTransform(model);
@@ -886,21 +637,21 @@ namespace
 
 		void loadPrograms()
 		{
-			m_samplers[TERRAIN_DMAP_SAMPLER] = bgfx::createUniform("u_DmapSampler", bgfx::UniformType::Sampler);
-			m_samplers[TERRAIN_SMAP_SAMPLER] = bgfx::createUniform("u_SmapSampler", bgfx::UniformType::Sampler);
-			m_samplers[TERRAIN_DIFFUSE_SAMPLER] = bgfx::createUniform("u_DiffuseSampler", bgfx::UniformType::Sampler);
+			m_samplers[heightmap::types::TERRAIN_DMAP_SAMPLER] = bgfx::createUniform("u_DmapSampler", bgfx::UniformType::Sampler);
+			m_samplers[heightmap::types::TERRAIN_SMAP_SAMPLER] = bgfx::createUniform("u_SmapSampler", bgfx::UniformType::Sampler);
+			m_samplers[heightmap::types::TERRAIN_DIFFUSE_SAMPLER] = bgfx::createUniform("u_DiffuseSampler", bgfx::UniformType::Sampler);
 
 			m_uniforms.init();
 
-			m_programsDraw[PROGRAM_TERRAIN] = loadProgram("vs_terrain_render", "fs_terrain_render");
-			m_programsDraw[PROGRAM_TERRAIN_NORMAL] = loadProgram("vs_terrain_render", "fs_terrain_render_normal");
+			m_programsDraw[heightmap::types::PROGRAM_TERRAIN] = loadProgram("vs_terrain_render", "fs_terrain_render");
+			m_programsDraw[heightmap::types::PROGRAM_TERRAIN_NORMAL] = loadProgram("vs_terrain_render", "fs_terrain_render_normal");
 
-			m_programsCompute[PROGRAM_SUBD_CS_LOD] = bgfx::createProgram(loadShader("cs_terrain_lod"), true);
-			m_programsCompute[PROGRAM_UPDATE_INDIRECT] = bgfx::createProgram(loadShader("cs_terrain_update_indirect"), true);
-			m_programsCompute[PROGRAM_UPDATE_DRAW] = bgfx::createProgram(loadShader("cs_terrain_update_draw"), true);
-			m_programsCompute[PROGRAM_INIT_INDIRECT] = bgfx::createProgram(loadShader("cs_terrain_init"), true);
+			m_programsCompute[heightmap::types::PROGRAM_SUBD_CS_LOD] = bgfx::createProgram(loadShader("cs_terrain_lod"), true);
+			m_programsCompute[heightmap::types::PROGRAM_UPDATE_INDIRECT] = bgfx::createProgram(loadShader("cs_terrain_update_indirect"), true);
+			m_programsCompute[heightmap::types::PROGRAM_UPDATE_DRAW] = bgfx::createProgram(loadShader("cs_terrain_update_draw"), true);
+			m_programsCompute[heightmap::types::PROGRAM_INIT_INDIRECT] = bgfx::createProgram(loadShader("cs_terrain_init"), true);
 
-			m_programsCompute[PROGRAM_GENERATE_SMAP] = bgfx::createProgram(loadShader("cs_generate_smap"), true);
+			m_programsCompute[heightmap::types::PROGRAM_GENERATE_SMAP] = bgfx::createProgram(loadShader("cs_generate_smap"), true);
 			u_smapParams = bgfx::createUniform("u_smapParams", bgfx::UniformType::Vec4);
 
 		}
@@ -915,7 +666,7 @@ namespace
 				defaultSlopeData[0] = 0.0f;
 				defaultSlopeData[1] = 0.0f;
 
-				m_textures[TEXTURE_SMAP] = bgfx::createTexture2D(
+				m_textures[heightmap::types::TEXTURE_SMAP] = bgfx::createTexture2D(
 					1, 1, false, 1, bgfx::TextureFormat::RG32F,
 					BGFX_TEXTURE_NONE, mem
 				);
@@ -927,7 +678,7 @@ namespace
 			uint16_t h = static_cast<uint16_t>(dmap->m_height);
 			int mipcnt = dmap->m_numMips;
 
-			m_textures[TEXTURE_SMAP] = bgfx::createTexture2D(
+			m_textures[heightmap::types::TEXTURE_SMAP] = bgfx::createTexture2D(
 				(uint16_t)w,
 				(uint16_t)h,
 				mipcnt > 1,
@@ -939,13 +690,13 @@ namespace
 			float smapParams[4] = { (float)w, (float)h, m_terrainAspectRatio, 1.0f };
 			bgfx::setUniform(u_smapParams, smapParams);
 
-			bgfx::setTexture(0, m_samplers[TERRAIN_DMAP_SAMPLER], m_textures[TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+			bgfx::setTexture(0, m_samplers[heightmap::types::TERRAIN_DMAP_SAMPLER], m_textures[heightmap::types::TEXTURE_DMAP], BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
 
-			bgfx::setImage(1, m_textures[TEXTURE_SMAP], 0, bgfx::Access::Write, bgfx::TextureFormat::RGBA32F);
+			bgfx::setImage(1, m_textures[heightmap::types::TEXTURE_SMAP], 0, bgfx::Access::Write, bgfx::TextureFormat::RGBA32F);
 
 			uint16_t groupsX = (w + 15) / 16;
 			uint16_t groupsY = (h + 15) / 16;
-			bgfx::dispatch(0, m_programsCompute[PROGRAM_GENERATE_SMAP], groupsX, groupsY, 1);
+			bgfx::dispatch(0, m_programsCompute[heightmap::types::PROGRAM_GENERATE_SMAP], groupsX, groupsY, 1);
 			bgfx::frame();
 
 
@@ -971,7 +722,7 @@ namespace
 				defaultSlopeData[0] = 0.0f;
 				defaultSlopeData[1] = 0.0f;
 
-				m_textures[TEXTURE_SMAP] = bgfx::createTexture2D(
+				m_textures[heightmap::types::TEXTURE_SMAP] = bgfx::createTexture2D(
 					1, 1, false, 1, bgfx::TextureFormat::RG32F,
 					BGFX_TEXTURE_NONE, mem
 				);
@@ -1013,7 +764,7 @@ namespace
 				}
 			}
 
-			m_textures[TEXTURE_SMAP] = bgfx::createTexture2D(
+			m_textures[heightmap::types::TEXTURE_SMAP] = bgfx::createTexture2D(
 				(uint16_t)w
 				, (uint16_t)h
 				, mipcnt > 1
@@ -1045,7 +796,7 @@ namespace
 				uint16_t* defaultHeightData = (uint16_t*)mem->data;
 				*defaultHeightData = 0; // 黑色，高度为0
 
-				m_textures[TEXTURE_DMAP] = bgfx::createTexture2D(
+				m_textures[heightmap::types::TEXTURE_DMAP] = bgfx::createTexture2D(
 					1, 1, false, 1, bgfx::TextureFormat::R16,
 					BGFX_TEXTURE_NONE, mem
 				);
@@ -1063,7 +814,7 @@ namespace
 				m_terrainAspectRatio = 1.0f;
 			}
 
-			m_textures[TEXTURE_DMAP] = bgfx::createTexture2D(
+			m_textures[heightmap::types::TEXTURE_DMAP] = bgfx::createTexture2D(
 				(uint16_t)dmap->m_width
 				, (uint16_t)dmap->m_height
 				, false
@@ -1082,10 +833,10 @@ namespace
 				| BGFX_SAMPLER_MIN_ANISOTROPIC | BGFX_SAMPLER_MAG_ANISOTROPIC | BGFX_SAMPLER_MIP_SHIFT;
 
 			// 尝试加载表面纹理
-			m_textures[TEXTURE_DIFFUSE] = loadTexture(filePath, textureFlags);
+			m_textures[heightmap::types::TEXTURE_DIFFUSE] = loadTexture(filePath, textureFlags);
 
 			// 处理加载失败的情况
-			if (!bgfx::isValid(m_textures[TEXTURE_DIFFUSE])) {
+			if (!bgfx::isValid(m_textures[heightmap::types::TEXTURE_DIFFUSE])) {
 				BX_TRACE("Failed to load diffuse texture: %s, using default texture", filePath);
 
 				// 可以选择加载一个默认纹理
@@ -1095,7 +846,7 @@ namespace
 				data[0] = data[1] = data[2] = 128; // 灰色
 				data[3] = 255; // 不透明
 
-				m_textures[TEXTURE_DIFFUSE] = bgfx::createTexture2D(
+				m_textures[heightmap::types::TEXTURE_DIFFUSE] = bgfx::createTexture2D(
 					1, 1, false, 1, bgfx::TextureFormat::RGBA8,
 					BGFX_TEXTURE_NONE, mem
 				);
@@ -1152,12 +903,12 @@ namespace
 		{
 			const uint32_t bufferCapacity = 1 << 27;
 
-			m_bufferSubd[BUFFER_SUBD] = bgfx::createDynamicIndexBuffer(
+			m_bufferSubd[heightmap::types::BUFFER_SUBD] = bgfx::createDynamicIndexBuffer(
 				bufferCapacity
 				, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_INDEX32
 			);
 
-			m_bufferSubd[BUFFER_SUBD + 1] = bgfx::createDynamicIndexBuffer(
+			m_bufferSubd[heightmap::types::BUFFER_SUBD + 1] = bgfx::createDynamicIndexBuffer(
 				bufferCapacity
 				, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_INDEX32
 			);
@@ -1187,29 +938,29 @@ namespace
 			case 0:
 				m_instancedMeshVertexCount = 3;
 				m_instancedMeshPrimitiveCount = 1;
-				vertices = s_verticesL0;
-				indexes = s_indexesL0;
+				vertices = heightmap::tables::s_verticesL0;
+				indexes = heightmap::tables::s_indexesL0;
 				break;
 
 			case 1:
 				m_instancedMeshVertexCount = 6;
 				m_instancedMeshPrimitiveCount = 4;
-				vertices = s_verticesL1;
-				indexes = s_indexesL1;
+				vertices = heightmap::tables::s_verticesL1;
+				indexes = heightmap::tables::s_indexesL1;
 				break;
 
 			case 2:
 				m_instancedMeshVertexCount = 15;
 				m_instancedMeshPrimitiveCount = 16;
-				vertices = s_verticesL2;
-				indexes = s_indexesL2;
+				vertices = heightmap::tables::s_verticesL2;
+				indexes = heightmap::tables::s_indexesL2;
 				break;
 
 			default:
 				m_instancedMeshVertexCount = 45;
 				m_instancedMeshPrimitiveCount = 64;
-				vertices = s_verticesL3;
-				indexes = s_indexesL3;
+				vertices = heightmap::tables::s_verticesL3;
+				indexes = heightmap::tables::s_indexesL3;
 				break;
 			}
 
@@ -1248,10 +999,10 @@ namespace
 
 		Uniforms m_uniforms;
 
-		bgfx::ProgramHandle m_programsCompute[PROGRAM_COUNT];
-		bgfx::ProgramHandle m_programsDraw[SHADING_COUNT];
-		bgfx::TextureHandle m_textures[TEXTURE_COUNT];
-		bgfx::UniformHandle m_samplers[SAMPLER_COUNT];
+		bgfx::ProgramHandle m_programsCompute[heightmap::types::PROGRAM_COUNT];
+		bgfx::ProgramHandle m_programsDraw[heightmap::types::SHADING_COUNT];
+		bgfx::TextureHandle m_textures[heightmap::types::TEXTURE_COUNT];
+		bgfx::UniformHandle m_samplers[heightmap::types::SAMPLER_COUNT];
 
 		bgfx::DynamicIndexBufferHandle m_bufferSubd[2];
 		bgfx::DynamicIndexBufferHandle m_bufferCulledSubd;
