@@ -41,5 +41,9 @@ namespace types {
 
         TEXTURE_COUNT
     };
+
+    
+	constexpr int32_t kNumVec4 = 2;
+
 }
 }

@@ -2,7 +2,6 @@
 
 namespace heightmap {
 namespace tables {
-
     const char* s_shaderOptions[] =
     {
         "Normal",

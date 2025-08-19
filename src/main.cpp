@@ -15,13 +15,12 @@
 
 namespace
 {
-	constexpr int32_t kNumVec4 = 2;
-
+	
 	struct Uniforms
 	{
 		void init()
 		{
-			u_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, kNumVec4);
+			u_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, heightmap::tables::kNumVec4);
 			u_aspectParams = bgfx::createUniform("u_aspectParams", bgfx::UniformType::Vec4);
 
 			cull = 1;
@@ -33,7 +32,7 @@ namespace
 
 		void submit()
 		{
-			bgfx::setUniform(u_params, params, kNumVec4);
+			bgfx::setUniform(u_params, params, heightmap::tables::kNumVec4);
 
 			float aspectParams[4] = { terrainHalfWidth, terrainHalfHeight, 0.0f,  0.0f };
 			bgfx::setUniform(u_aspectParams, aspectParams);
@@ -63,12 +62,13 @@ namespace
 				float terrainHalfHeight;
 			};
 
-			float params[kNumVec4 * 4];
+			float params[heightmap::tables::kNumVec4 * 4];
 		};
 
 		bgfx::UniformHandle u_params;
 		bgfx::UniformHandle u_aspectParams;
 	};
+
 
 	class ExampleHeightmap : public entry::AppI
 	{
