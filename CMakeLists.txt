@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.14)
 
 # 定义项目名称和使用的编程语言
 # project() 命令会自动创建一些变量，如 PROJECT_NAME, PROJECT_SOURCE_DIR 等
-project(heightmaprenderer)
+project(omniengine)
 
 # ========================================
 # 编译器和构建配置
@@ -42,7 +42,7 @@ set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # 添加 bgfx.cmake 作为子项目
 # add_subdirectory 会处理指定目录中的 CMakeLists.txt
 # 这会构建 bgfx、bimg、bx 库和 shaderc 工具
-add_subdirectory(external/bgfx.cmake)
+add_subdirectory(/bgfx.cmake)
 
 # ========================================
 # 着色器编译配置
@@ -68,13 +68,13 @@ set(VARYING_DEF ${SHADER_SOURCE_DIR}/varying.def.sc)
 # 这些路径用于查找着色器中 #include 的文件
 set(SHADER_INCLUDE_PATHS
     # bgfx 内部着色器头文件（包含 bgfx_shader.sh 等核心文件）
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/src
     # 项目的着色器目录（包含自定义的 .sh 文件）
     ${SHADER_SOURCE_DIR}
     # common 目录（包含 common.sh 和 shaderlib.sh）
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common
     # bgfx examples 的 common 目录（可能包含额外的辅助着色器）
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/examples/common
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/examples/common
 )
 
 # 构建 shaderc 的包含路径参数列表
@@ -377,24 +377,24 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src                    # 项目源代码目录
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common             # common 目录
     # bgfx 相关的包含目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/include      # bgfx 公共头文件
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include        # bx 工具库头文件
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bimg/include      # bimg 图像库头文件
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/include      # bgfx 公共头文件
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bx/include        # bx 工具库头文件
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bimg/include      # bimg 图像库头文件
     # 第三方库目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty     # bgfx 第三方库根目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/dear-imgui   # Dear ImGui
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/meshoptimizer # 网格优化器
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/stb          # STB 单头文件库
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/3rdparty     # bgfx 第三方库根目录
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/3rdparty/dear-imgui   # Dear ImGui
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/3rdparty/meshoptimizer # 网格优化器
+    ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bgfx/3rdparty/stb          # STB 单头文件库
     ${SHADER_INCLUDE_DIR}  # 生成的着色器头文件目录
 )
 
 # 如果 bgfx.cmake 有自己的第三方库位置，也添加这些路径
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/3rdparty)
     target_include_directories(${PROJECT_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/dear-imgui
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/meshoptimizer
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/stb
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/3rdparty
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/3rdparty/dear-imgui
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/3rdparty/meshoptimizer
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/3rdparty/stb
     )
 endif()
 
@@ -402,12 +402,12 @@ endif()
 if(WIN32)
     # Windows 平台需要 MSVC 兼容性头文件
     target_include_directories(${PROJECT_NAME} PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include/compat/msvc
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bx/include/compat/msvc
     )
 elseif(APPLE)
     # macOS 平台需要 OSX 兼容性头文件
     target_include_directories(${PROJECT_NAME} PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include/compat/osx
+        ${CMAKE_CURRENT_SOURCE_DIR}//bgfx.cmake/bx/include/compat/osx
     )
 endif()
 
