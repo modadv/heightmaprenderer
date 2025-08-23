@@ -9,8 +9,6 @@
 #include <bx/timer.h>
 #include <cstdio>
 
-namespace heightmap {
-
 HeightmapRenderer::HeightmapRenderer()
     : m_dmap(nullptr)
     , m_width(0)
@@ -739,5 +737,3 @@ void HeightmapRenderer::renderTerrain(const float* viewMtx, const float* projMtx
 
     m_pingPong = 1 - m_pingPong;
 }
-
-} // namespace heightmap

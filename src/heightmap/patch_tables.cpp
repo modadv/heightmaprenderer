@@ -1,6 +1,5 @@
 #include "patch_tables.h"
 
-namespace heightmap {
 namespace tables {
     const char* s_shaderOptions[] =
     {
@@ -216,4 +215,3 @@ namespace tables {
 	};
 
 } // namespace tables
-} // namespace terrain

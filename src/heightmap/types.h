@@ -1,6 +1,5 @@
 #pragma once
 
-namespace heightmap {
 namespace types {
     enum
     {
@@ -43,8 +42,4 @@ namespace types {
 
         TEXTURE_COUNT
     };
-
-    
-
-}
 }

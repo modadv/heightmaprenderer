@@ -1,7 +1,5 @@
 #include "uniforms.h"
 
-namespace heightmap {
-
 void Uniforms::init() {
     m_paramsHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, tables::kNumVec4);
     m_aspectParamsHandle = bgfx::createUniform("u_aspectParams", bgfx::UniformType::Vec4);
@@ -24,5 +22,3 @@ void Uniforms::destroy() {
     bgfx::destroy(m_paramsHandle);
     bgfx::destroy(m_aspectParamsHandle);
 }
-
-} // namespace heightmap

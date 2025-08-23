@@ -357,7 +357,7 @@ endif()
 
 # add_executable 创建可执行文件目标
 add_executable(${PROJECT_NAME}
-    src/heightmap.cpp                    # 主程序文件
+    src/main.cpp                    # 主程序文件
     ${COMMON_SOURCE_FILES}           # 通用源文件
     ${DEBUGDRAW_SOURCES}             # 调试绘制源文件
     ${ENTRY_SOURCES}                 # 平台入口源文件
@@ -559,7 +559,7 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY
 
 # source_group 在 IDE（如 Visual Studio）中创建虚拟文件夹
 # 这不影响编译，只是为了更好地组织文件显示
-source_group("Source Files" FILES src/heightmap.cpp)
+source_group("Source Files" FILES src/main.cpp)
 source_group("Source Files\\Common" FILES ${COMMON_SOURCE_FILES})
 source_group("Source Files\\Common\\DebugDraw" FILES ${DEBUGDRAW_SOURCES})
 source_group("Source Files\\Common\\Entry" FILES ${ENTRY_SOURCES})

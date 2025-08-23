@@ -8,8 +8,6 @@
 #include <bx/file.h>
 #include <entry/entry.h>
 
-namespace heightmap {
-
 struct TextureOption {
     const char* name;
     const char* path;
@@ -147,5 +145,3 @@ private:
     char m_heightmapPath[256];
     char m_diffuseTexturePath[256];
 };
-
-} // namespace heightmap

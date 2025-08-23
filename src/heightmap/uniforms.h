@@ -2,7 +2,6 @@
 
 #include <bgfx/bgfx.h>
 #include "patch_tables.h"
-namespace heightmap {
 
 class Uniforms {
 public:
@@ -33,5 +32,3 @@ private:
     bgfx::UniformHandle m_paramsHandle;
     bgfx::UniformHandle m_aspectParamsHandle;
 };
-
-} // namespace heightmap
