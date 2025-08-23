@@ -521,7 +521,7 @@ endif()
 # 这包括字体、图像、网格、着色器、纹理等运行时资源
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/res/runtime $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    ${CMAKE_CURRENT_SOURCE_DIR}/res/runtime $<TARGET_FILE_DIR:${PROJECT_NAME}>
     COMMENT "Copying runtime contents to bin directory..."
 )
 
@@ -582,7 +582,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # 安装 runtime 目录的所有内容
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/runtime/
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/res/runtime/
     DESTINATION .
 )
 
