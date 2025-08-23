@@ -355,9 +355,8 @@ endif()
 # 创建可执行文件目标
 # ========================================
 
-# add_executable 创建可执行文件目标
-add_executable(${PROJECT_NAME}
-    src/main.cpp                    # 主程序文件
+# add_library 创建库文件
+add_library(${PROJECT_NAME}
     ${COMMON_SOURCE_FILES}           # 通用源文件
     ${DEBUGDRAW_SOURCES}             # 调试绘制源文件
     ${ENTRY_SOURCES}                 # 平台入口源文件
@@ -419,7 +418,7 @@ endif()
 # target_compile_definitions 设置编译时的宏定义
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     # Entry 系统需要这个宏来正确实现 main 函数
-    ENTRY_CONFIG_IMPLEMENT_MAIN=1
+    ENTRY_CONFIG_IMPLEMENT_MAIN=0
     
     # 根据构建配置设置调试宏
     # $<$<CONFIG:Debug>:...> 是生成器表达式，只在 Debug 配置时生效
@@ -559,7 +558,6 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY
 
 # source_group 在 IDE（如 Visual Studio）中创建虚拟文件夹
 # 这不影响编译，只是为了更好地组织文件显示
-source_group("Source Files" FILES src/main.cpp)
 source_group("Source Files\\Common" FILES ${COMMON_SOURCE_FILES})
 source_group("Source Files\\Common\\DebugDraw" FILES ${DEBUGDRAW_SOURCES})
 source_group("Source Files\\Common\\Entry" FILES ${ENTRY_SOURCES})

@@ -18,8 +18,7 @@
 #include "cmd.h"
 #include "input.h"
 
-extern "C" int32_t _main_(int32_t _argc, char** _argv);
-
+#include "heightmap/heightmap_app.h"
 namespace entry
 {
 	static uint32_t s_debug = BGFX_DEBUG_NONE;
@@ -646,7 +645,8 @@ restart:
 		s_restartArgs[0] = '\0';
 		if (0 == s_numApps)
 		{
-			result = ::_main_(_argc, (char**)_argv);
+			ExampleHeightmap app("Heightmap", "Adaptive GPU Tessellation.", "https://www.maker-ray.com");
+			result = runApp(&app, _argc, _argv);
 		}
 		else
 		{

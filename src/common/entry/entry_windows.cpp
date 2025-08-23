@@ -1178,11 +1178,4 @@ namespace entry
 	}
 
 } // namespace entry
-
-int main(int _argc, const char* const* _argv)
-{
-	using namespace entry;
-	return s_ctx.run(_argc, _argv);
-}
-
 #endif // BX_PLATFORM_WINDOWS
