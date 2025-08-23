@@ -356,7 +356,7 @@ endif()
 # ========================================
 
 # add_library 创建库文件
-add_library(${PROJECT_NAME}
+add_executable(${PROJECT_NAME}
     ${COMMON_SOURCE_FILES}           # 通用源文件
     ${DEBUGDRAW_SOURCES}             # 调试绘制源文件
     ${ENTRY_SOURCES}                 # 平台入口源文件
@@ -373,7 +373,7 @@ add_library(${PROJECT_NAME}
 
 # target_include_directories 设置目标的包含目录
 # PRIVATE 表示这些目录只对当前目标可见
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src                    # 项目源代码目录
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common             # common 目录
     # bgfx 相关的包含目录
@@ -390,7 +390,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # 如果 bgfx.cmake 有自己的第三方库位置，也添加这些路径
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty)
-    target_include_directories(${PROJECT_NAME} PRIVATE
+    target_include_directories(${PROJECT_NAME} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty
         ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/dear-imgui
         ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/meshoptimizer
@@ -416,7 +416,7 @@ endif()
 # ========================================
 
 # target_compile_definitions 设置编译时的宏定义
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+target_compile_definitions(${PROJECT_NAME} PUBLIC
     # Entry 系统需要这个宏来正确实现 main 函数
     ENTRY_CONFIG_IMPLEMENT_MAIN=0
     
@@ -449,7 +449,7 @@ endif()
 # ========================================
 
 # target_link_libraries 指定要链接的库
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME} PUBLIC
     bgfx    # bgfx 图形库
     bimg    # bimg 图像处理库
     bx      # bx 基础工具库
@@ -457,10 +457,10 @@ target_link_libraries(${PROJECT_NAME}
 
 # 如果 bgfx.cmake 构建了第三方库目标，链接它们
 if(TARGET dear-imgui)
-    target_link_libraries(${PROJECT_NAME} dear-imgui)
+    target_link_libraries(${PROJECT_NAME} PUBLIC dear-imgui)
 endif()
 if(TARGET meshoptimizer)
-    target_link_libraries(${PROJECT_NAME} meshoptimizer)
+    target_link_libraries(${PROJECT_NAME} PUBLIC meshoptimizer)
 endif()
 
 # 确保着色器在主程序之前编译
@@ -473,7 +473,7 @@ add_dependencies(${PROJECT_NAME} shaders)
 
 if(WIN32)
     # Windows 平台需要链接的系统库
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PUBLIC 
         psapi    # Process Status API，用于进程信息
     )
     # 设置链接器标志
@@ -488,7 +488,7 @@ if(UNIX AND NOT APPLE)
     # Linux 平台需要的库
     find_package(X11 REQUIRED)          # X11 窗口系统
     find_package(OpenGL REQUIRED)       # OpenGL 图形库
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PUBLIC 
         ${X11_LIBRARIES}                # X11 库
         ${OPENGL_LIBRARIES}             # OpenGL 库
         pthread                          # POSIX 线程库
@@ -502,7 +502,7 @@ if(APPLE)
     find_library(METAL_LIBRARY Metal)           # Metal 图形框架
     find_library(QUARTZCORE_LIBRARY QuartzCore) # Core Animation 框架
     find_library(IOKIT_LIBRARY IOKit)           # I/O Kit 框架
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PUBLIC 
         ${COCOA_LIBRARY}
         ${METAL_LIBRARY}
         ${QUARTZCORE_LIBRARY}
