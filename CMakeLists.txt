@@ -42,7 +42,7 @@ set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # 添加 bgfx.cmake 作为子项目
 # add_subdirectory 会处理指定目录中的 CMakeLists.txt
 # 这会构建 bgfx、bimg、bx 库和 shaderc 工具
-add_subdirectory(/bgfx.cmake)
+add_subdirectory(bgfx.cmake)
 
 # ========================================
 # 着色器编译配置
