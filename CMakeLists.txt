@@ -373,7 +373,7 @@ add_library(${PROJECT_NAME}
 
 # target_include_directories 设置目标的包含目录
 # PRIVATE 表示这些目录只对当前目标可见
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src                    # 项目源代码目录
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common             # common 目录
     # bgfx 相关的包含目录
