@@ -325,7 +325,6 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 			else if (0 == bx::strCmp(_argv[1], "fullscreen") )
 			{
 				WindowHandle window = { 0 };
-				toggleFullscreen(window);
 				return bx::kExitSuccess;
 			}
 		}
@@ -532,7 +531,6 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 		_app->init(_argc, _argv, s_width, s_height);
 		bgfx::frame();
 
-		setWindowSize(kDefaultWindowHandle, s_width, s_height);
 
 #if BX_PLATFORM_EMSCRIPTEN
 		s_app = _app;
@@ -612,7 +610,6 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 		bx::strCopy(title, BX_COUNTOF(title), fp.getBaseName() );
 
 		entry::setWindowTitle(kDefaultWindowHandle, title);
-		setWindowSize(kDefaultWindowHandle, ENTRY_DEFAULT_WIDTH, ENTRY_DEFAULT_HEIGHT);
 
 		sortApps();
 

@@ -4,12 +4,13 @@
 
 # 指定 CMake 的最低版本要求
 # 3.14 版本支持较新的特性，如更好的 MSVC 运行时库处理
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.26)
 
 # 定义项目名称和使用的编程语言
 # project() 命令会自动创建一些变量，如 PROJECT_NAME, PROJECT_SOURCE_DIR 等
 project(omniengine)
 
+find_package(Qt5 5.15 REQUIRED COMPONENTS Core Quick Qml Gui Widgets)
 # ========================================
 # 编译器和构建配置
 # ========================================
@@ -19,6 +20,10 @@ project(omniengine)
 set(CMAKE_CXX_STANDARD 14)
 # CMAKE_CXX_STANDARD_REQUIRED ON 表示必须支持指定的 C++ 标准，否则报错
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 # 设置输出目录
 # 这确保所有构建配置（Debug/Release）的可执行文件都输出到同一个 bin 目录
@@ -298,14 +303,21 @@ set(HEIGHTMAP_SOURCE_FILES
     src/heightmap/patch_tables.cpp
     src/heightmap/uniforms.cpp
     src/heightmap/heightmap_renderer.cpp
+    src/bgfxitem.h      # 新增
+    src/bgfxitem.cpp      # 新增
 )
 
 # 定义通用源文件列表（所有平台都需要的文件）
 set(COMMON_SOURCE_FILES
+    src/main.cpp
     src/common/bgfx_utils.cpp       # bgfx 实用工具函数
     src/common/camera.cpp            # 相机控制
     src/common/cube_atlas.cpp        # 立方体纹理图集
     src/common/example-glue.cpp     # 示例程序粘合代码
+
+    
+    src/BGFXRenderNode.cpp     # 示例程序粘合代码
+    src/BGFXItem.cpp     # 示例程序粘合代码
 )
 
 # 使用 GLOB 收集子目录中的所有源文件
@@ -330,7 +342,6 @@ if(WIN32)
 elseif(APPLE)
     # macOS 平台：移除其他平台的入口文件
     list(REMOVE_ITEM ENTRY_SOURCES 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_windows.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_x11.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_asmjs.cpp
@@ -343,7 +354,6 @@ elseif(APPLE)
 elseif(UNIX)
     # Linux 平台：移除其他平台的入口文件
     list(REMOVE_ITEM ENTRY_SOURCES 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_windows.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_osx.mm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_ios.mm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp
@@ -354,9 +364,14 @@ endif()
 # ========================================
 # 创建可执行文件目标
 # ========================================
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+qt5_add_resources(QT_RESOURCES "${CMAKE_SOURCE_DIR}/res/resources.qrc")
 
 # add_library 创建库文件
-add_library(${PROJECT_NAME}
+add_executable(${PROJECT_NAME}
     ${COMMON_SOURCE_FILES}           # 通用源文件
     ${DEBUGDRAW_SOURCES}             # 调试绘制源文件
     ${ENTRY_SOURCES}                 # 平台入口源文件
@@ -365,6 +380,7 @@ add_library(${PROJECT_NAME}
     ${NANOVG_SOURCES}                # NanoVG 源文件
     ${PS_SOURCES}                    # 粒子系统源文件
     ${HEIGHTMAP_SOURCE_FILES}        # 高度图模块源文件
+    ${QT_RESOURCES}
 )
 
 # ========================================
@@ -450,6 +466,11 @@ endif()
 
 # target_link_libraries 指定要链接的库
 target_link_libraries(${PROJECT_NAME}
+    Qt5::Core
+    Qt5::Quick
+    Qt5::Qml
+    Qt5::Gui
+    Qt5::Widgets
     bgfx    # bgfx 图形库
     bimg    # bimg 图像处理库
     bx      # bx 基础工具库
@@ -461,6 +482,14 @@ if(TARGET dear-imgui)
 endif()
 if(TARGET meshoptimizer)
     target_link_libraries(${PROJECT_NAME} meshoptimizer)
+endif()
+# Windows特定的OpenGL头文件
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} 
+        opengl32  # 添加OpenGL库
+        psapi
+        gdi32
+    )
 endif()
 
 # 确保着色器在主程序之前编译
@@ -486,8 +515,6 @@ endif()
 
 if(UNIX AND NOT APPLE)
     # Linux 平台需要的库
-    find_package(X11 REQUIRED)          # X11 窗口系统
-    find_package(OpenGL REQUIRED)       # OpenGL 图形库
     target_link_libraries(${PROJECT_NAME}
         ${X11_LIBRARIES}                # X11 库
         ${OPENGL_LIBRARIES}             # OpenGL 库

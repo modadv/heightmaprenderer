@@ -376,7 +376,6 @@ void inputSetMouseLock(bool _lock)
 	{
 		s_input->m_mouse.m_lock = _lock;
 
-		entry::setMouseLock(entry::kDefaultWindowHandle, _lock);
 		if (_lock)
 		{
 			s_input->m_mouse.m_norm[0] = 0.0f;
