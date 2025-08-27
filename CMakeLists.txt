@@ -352,20 +352,70 @@ elseif(UNIX)
 endif()
 
 # ========================================
+# 主程序源文件和头文件收集
+# ========================================
+
+# 收集所有源文件和头文件
+file(GLOB_RECURSE ALL_SOURCE_FILES 
+    src/*.cpp
+    src/*.c
+)
+
+file(GLOB_RECURSE ALL_HEADER_FILES
+    src/*.h
+    src/*.hpp
+)
+
+# 如果有 .mm 文件（macOS）
+if(APPLE)
+    file(GLOB_RECURSE OBJC_SOURCES src/*.mm)
+    list(APPEND ALL_SOURCE_FILES ${OBJC_SOURCES})
+endif()
+
+# 合并所有文件
+set(ALL_PROJECT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
+
+# 移除平台特定的 entry 文件
+if(WIN32)
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_x11\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_osx\\.mm$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_ios\\.mm$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
+elseif(APPLE)
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_windows\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_x11\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
+elseif(UNIX)
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_windows\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_osx\\.mm$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_ios\\.mm$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
+    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
+endif()
+
+# ========================================
 # 创建可执行文件目标
 # ========================================
 
-# add_library 创建库文件
-add_executable(${PROJECT_NAME}
-    ${COMMON_SOURCE_FILES}           # 通用源文件
-    ${DEBUGDRAW_SOURCES}             # 调试绘制源文件
-    ${ENTRY_SOURCES}                 # 平台入口源文件
-    ${FONT_SOURCES}                  # 字体源文件
-    ${IMGUI_SOURCES}                 # ImGui 源文件
-    ${NANOVG_SOURCES}                # NanoVG 源文件
-    ${PS_SOURCES}                    # 粒子系统源文件
-    ${HEIGHTMAP_SOURCE_FILES}        # 高度图模块源文件
+add_executable(${PROJECT_NAME} ${ALL_PROJECT_FILES})
+
+# ========================================
+# 源文件组织（IDE 中的文件夹结构）
+# ========================================
+
+# 使用 TREE 选项自动根据文件系统结构创建虚拟文件夹
+# PREFIX 设置虚拟文件夹的根名称
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${ALL_PROJECT_FILES})
+
+# 着色器文件单独组织
+file(GLOB_RECURSE SHADER_FILES
+    src/shaders/*.sc
+    src/shaders/*.sh
+    src/common/*.sh
 )
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Shaders" FILES ${SHADER_FILES})
 
 # ========================================
 # 设置包含目录（头文件搜索路径）
