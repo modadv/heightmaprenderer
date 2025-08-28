@@ -12,12 +12,22 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QTouchEvent>
 #include <QDir>
-#include <QDebug>
-#include <stdio.h>
 
 #if BX_PLATFORM_WINDOWS
-#include <windows.h>
+    #include <windows.h>
+#elif BX_PLATFORM_LINUX
+    #include <X11/Xlib.h>
+    #include <qpa/qplatformnativeinterface.h>
+#elif BX_PLATFORM_OSX
+    #include <Cocoa/Cocoa.h>
+#endif
+
+// Optional debug console for development
+#define ENTRY_QT_DEBUG_CONSOLE 0
+
+#if ENTRY_QT_DEBUG_CONSOLE && BX_PLATFORM_WINDOWS
 #include <io.h>
 #include <fcntl.h>
 #include <iostream>
@@ -37,15 +47,13 @@ static void CreateConsoleWindow()
     
     std::ios::sync_with_stdio();
     
-    SetConsoleTitleA("BGFX-Qt Debug Console");
-    
-    printf("=== Debug Console Created ===\n");
+    SetConsoleTitleA("Debug Console");
 }
 #endif
 
 namespace entry
 {
-    // Custom Qt Window with OpenGL support
+    // Custom Qt Window with OpenGL support for BGFX
     class BgfxQtWindow : public QWindow
     {
     public:
@@ -53,12 +61,11 @@ namespace entry
             : QWindow()
             , m_context(nullptr)
             , m_eventQueue(nullptr)
-            , m_update(true)
+            , m_frameTimer(nullptr)
         {
-            printf("BgfxQtWindow constructor\n");
-            
             setSurfaceType(QSurface::OpenGLSurface);
             
+            // Setup OpenGL format for BGFX
             QSurfaceFormat format;
             format.setRenderableType(QSurfaceFormat::OpenGL);
             format.setProfile(QSurfaceFormat::CoreProfile);
@@ -66,22 +73,33 @@ namespace entry
             format.setDepthBufferSize(24);
             format.setStencilBufferSize(8);
             format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+            format.setSwapInterval(0); // Disable vsync, let BGFX handle it
             setFormat(format);
             
+            // Create OpenGL context
             m_context = new QOpenGLContext(this);
             m_context->setFormat(format);
-            if (!m_context->create())
-            {
-                printf("Failed to create OpenGL context\n");
-            }
-            else
-            {
-                printf("OpenGL context created successfully\n");
-            }
+            m_context->create();
+            
+            // Setup frame timer for continuous rendering
+            m_frameTimer = new QTimer(this);
+            m_frameTimer->setInterval(0); // As fast as possible
+            connect(m_frameTimer, &QTimer::timeout, [this]() {
+                if (isExposed())
+                {
+                    requestUpdate();
+                }
+            });
+            m_frameTimer->start();
         }
         
         ~BgfxQtWindow()
         {
+            if (m_frameTimer)
+            {
+                m_frameTimer->stop();
+                delete m_frameTimer;
+            }
             delete m_context;
         }
         
@@ -107,10 +125,23 @@ namespace entry
         }
         
     protected:
+        bool event(QEvent* event) override
+        {
+            switch (event->type())
+            {
+            case QEvent::UpdateRequest:
+                // Just process the update request, don't post empty event
+                // The main loop will handle polling
+                return true;
+                
+            default:
+                return QWindow::event(event);
+            }
+        }
+        
         void exposeEvent(QExposeEvent* event) override
         {
             Q_UNUSED(event);
-            printf("Window expose event: %s\n", isExposed() ? "exposed" : "hidden");
             
             if (isExposed() && m_eventQueue)
             {
@@ -121,7 +152,6 @@ namespace entry
         void resizeEvent(QResizeEvent* event) override
         {
             Q_UNUSED(event);
-            printf("Window resize: %dx%d\n", width(), height());
             
             if (m_eventQueue && isExposed())
             {
@@ -131,7 +161,7 @@ namespace entry
         
         void keyPressEvent(QKeyEvent* event) override
         {
-            if (m_eventQueue)
+            if (m_eventQueue && !event->isAutoRepeat())
             {
                 Key::Enum key = translateKey(event->key());
                 if (key != Key::None)
@@ -139,12 +169,28 @@ namespace entry
                     m_eventQueue->postKeyEvent(kDefaultWindowHandle, key, 
                         translateModifiers(event->modifiers()), true);
                 }
+                
+                // Handle text input
+                if (!event->text().isEmpty())
+                {
+                    const QString text = event->text();
+                    for (int i = 0; i < text.length(); ++i)
+                    {
+                        uint8_t utf8[4] = {};
+                        QChar ch = text.at(i);
+                        if (ch.unicode() < 0x80)
+                        {
+                            utf8[0] = ch.unicode();
+                            m_eventQueue->postCharEvent(kDefaultWindowHandle, 1, utf8);
+                        }
+                    }
+                }
             }
         }
         
         void keyReleaseEvent(QKeyEvent* event) override
         {
-            if (m_eventQueue)
+            if (m_eventQueue && !event->isAutoRepeat())
             {
                 Key::Enum key = translateKey(event->key());
                 if (key != Key::None)
@@ -194,8 +240,9 @@ namespace entry
         {
             if (m_eventQueue)
             {
+                int delta = event->angleDelta().y() / 120;
                 m_eventQueue->postMouseEvent(kDefaultWindowHandle, 
-                    event->x(), event->y(), event->angleDelta().y() / 120);
+                    event->x(), event->y(), delta);
             }
         }
         
@@ -213,13 +260,25 @@ namespace entry
                 case Qt::Key_Down:       return Key::Down;
                 case Qt::Key_Left:       return Key::Left;
                 case Qt::Key_Right:      return Key::Right;
-                case Qt::Key_PageUp:     return Key::PageUp;
-                case Qt::Key_PageDown:   return Key::PageDown;
+                case Qt::Key_Insert:     return Key::Insert;
+                case Qt::Key_Delete:     return Key::Delete;
                 case Qt::Key_Home:       return Key::Home;
                 case Qt::Key_End:        return Key::End;
+                case Qt::Key_PageUp:     return Key::PageUp;
+                case Qt::Key_PageDown:   return Key::PageDown;
                 case Qt::Key_Print:      return Key::Print;
                 case Qt::Key_Plus:       return Key::Plus;
                 case Qt::Key_Minus:      return Key::Minus;
+                // Qt::Key_Equal doesn't exist, use Qt::Key_Equal if available
+                // or handle '=' as a character input instead
+                case Qt::Key_Comma:      return Key::Comma;
+                case Qt::Key_Period:     return Key::Period;
+                case Qt::Key_Slash:      return Key::Slash;
+                case Qt::Key_Semicolon:  return Key::Semicolon;
+                case Qt::Key_BracketLeft: return Key::LeftBracket;
+                case Qt::Key_BracketRight: return Key::RightBracket;
+                case Qt::Key_Backslash:  return Key::Backslash;
+                case Qt::Key_Apostrophe: return Key::Quote;
                 case Qt::Key_F1:         return Key::F1;
                 case Qt::Key_F2:         return Key::F2;
                 case Qt::Key_F3:         return Key::F3;
@@ -295,49 +354,49 @@ namespace entry
         
         QOpenGLContext* m_context;
         EventQueue* m_eventQueue;
-        bool m_update;
+        QTimer* m_frameTimer;
     };
     
     // Static variables
     static QGuiApplication* s_app = nullptr;
     static BgfxQtWindow* s_window = nullptr;
     static EventQueue s_eventQueue;
-    static bool s_exit = false;
-    static int32_t s_windowPosX = 100;
-    static int32_t s_windowPosY = 100;
-    static uint32_t s_windowWidth = 1280;
-    static uint32_t s_windowHeight = 720;
-    static const char* s_windowTitle = "BGFX";
+    
+    // Window creation parameters (cached for delayed creation)
+    static struct WindowParams
+    {
+        int32_t x = 100;
+        int32_t y = 100;
+        uint32_t width = 1280;
+        uint32_t height = 720;
+        const char* title = "BGFX";
+    } s_windowParams;
     
     // Helper function to ensure window exists
     static void ensureWindowCreated()
     {
         if (!s_app)
         {
-            printf("Creating QGuiApplication in ensureWindowCreated...\n");
             static int argc = 1;
             static char appName[] = "bgfx-qt";
             static char* argv[] = { appName, nullptr };
             
             s_app = new QGuiApplication(argc, argv);
             s_app->setApplicationName("BGFX-Qt");
+            s_app->setApplicationDisplayName(QString::fromUtf8(s_windowParams.title));
         }
         
         if (!s_window)
         {
-            printf("Creating BgfxQtWindow in ensureWindowCreated...\n");
             s_window = new BgfxQtWindow();
             s_window->setEventQueue(&s_eventQueue);
-            s_window->setTitle(QString::fromUtf8(s_windowTitle));
-            s_window->setPosition(s_windowPosX, s_windowPosY);
-            s_window->resize(s_windowWidth, s_windowHeight);
+            s_window->setTitle(QString::fromUtf8(s_windowParams.title));
+            s_window->setPosition(s_windowParams.x, s_windowParams.y);
+            s_window->resize(s_windowParams.width, s_windowParams.height);
             s_window->show();
             
             // Process events to make sure window is shown
             s_app->processEvents();
-            
-            printf("Window created with title: %s, size: %dx%d\n", 
-                   s_windowTitle, s_windowWidth, s_windowHeight);
         }
     }
     
@@ -369,13 +428,11 @@ namespace entry
     
     WindowHandle createWindow(int32_t _x, int32_t _y, uint32_t _width, uint32_t _height, uint32_t _flags, const char* _title)
     {
-        printf("createWindow: %dx%d at (%d,%d), title: %s\n", _width, _height, _x, _y, _title);
-        
-        s_windowPosX = _x;
-        s_windowPosY = _y;
-        s_windowWidth = _width;
-        s_windowHeight = _height;
-        if (_title) s_windowTitle = _title;
+        s_windowParams.x = _x;
+        s_windowParams.y = _y;
+        s_windowParams.width = _width;
+        s_windowParams.height = _height;
+        if (_title) s_windowParams.title = _title;
         
         ensureWindowCreated();
         
@@ -384,23 +441,18 @@ namespace entry
     
     void destroyWindow(WindowHandle _handle)
     {
-        printf("destroyWindow\n");
-        
         if (s_window)
         {
             s_window->destroy();
             delete s_window;
             s_window = nullptr;
         }
-        
-        s_exit = true;
     }
     
     void setWindowPos(WindowHandle _handle, int32_t _x, int32_t _y)
     {
-        printf("setWindowPos: %d, %d\n", _x, _y);
-        s_windowPosX = _x;
-        s_windowPosY = _y;
+        s_windowParams.x = _x;
+        s_windowParams.y = _y;
         
         if (s_window)
         {
@@ -410,11 +462,9 @@ namespace entry
     
     void setWindowSize(WindowHandle _handle, uint32_t _width, uint32_t _height)
     {
-        printf("setWindowSize: %dx%d\n", _width, _height);
-        s_windowWidth = _width;
-        s_windowHeight = _height;
+        s_windowParams.width = _width;
+        s_windowParams.height = _height;
         
-        // 如果窗口还不存在，在这里创建它
         ensureWindowCreated();
         
         if (s_window)
@@ -425,21 +475,42 @@ namespace entry
     
     void setWindowTitle(WindowHandle _handle, const char* _title)
     {
-        printf("setWindowTitle: %s\n", _title);
-        if (_title) s_windowTitle = _title;
+        if (_title) s_windowParams.title = _title;
         
-        // 如果窗口还不存在，在这里创建它
         ensureWindowCreated();
         
         if (s_window)
         {
             s_window->setTitle(QString::fromUtf8(_title));
         }
+        
+        if (s_app)
+        {
+            s_app->setApplicationDisplayName(QString::fromUtf8(_title));
+        }
     }
     
     void setWindowFlags(WindowHandle _handle, uint32_t _flags, bool _enabled)
     {
-        // TODO
+        if (s_window)
+        {
+            Qt::WindowFlags qtFlags = s_window->flags();
+            
+            if (_flags & ENTRY_WINDOW_FLAG_ASPECT_RATIO)
+            {
+                // TODO: Implement aspect ratio constraint
+            }
+            
+            if (_flags & ENTRY_WINDOW_FLAG_FRAME)
+            {
+                if (_enabled)
+                    qtFlags &= ~Qt::FramelessWindowHint;
+                else
+                    qtFlags |= Qt::FramelessWindowHint;
+            }
+            
+            s_window->setFlags(qtFlags);
+        }
     }
     
     void toggleFullscreen(WindowHandle _handle)
@@ -464,6 +535,7 @@ namespace entry
             if (_lock)
             {
                 s_window->setCursor(Qt::BlankCursor);
+                // TODO: Implement proper mouse lock/capture
             }
             else
             {
@@ -474,36 +546,26 @@ namespace entry
     
     void* getNativeWindowHandle(WindowHandle _handle)
     {
-        printf("getNativeWindowHandle called\n");
-        
-        // 确保窗口已创建
         ensureWindowCreated();
         
         if (s_window)
         {
             s_window->create();
-            WId wid = s_window->winId();
-            printf("Window ID: %p\n", reinterpret_cast<void*>(wid));
-            return reinterpret_cast<void*>(wid);
+            return reinterpret_cast<void*>(s_window->winId());
         }
         
-        printf("getNativeWindowHandle: window still null after ensureWindowCreated!\n");
         return nullptr;
     }
     
     void* getNativeDisplayHandle()
     {
-        printf("getNativeDisplayHandle\n");
-        
 #if BX_PLATFORM_LINUX
         if (s_app && s_window)
         {
             QPlatformNativeInterface* native = s_app->platformNativeInterface();
             if (native)
             {
-                void* display = native->nativeResourceForWindow("display", s_window);
-                printf("Native display: %p\n", display);
-                return display;
+                return native->nativeResourceForWindow("display", s_window);
             }
         }
 #endif
@@ -514,32 +576,18 @@ namespace entry
 
 int main(int _argc, char** _argv)
 {
-#if BX_PLATFORM_WINDOWS
+#if ENTRY_QT_DEBUG_CONSOLE && BX_PLATFORM_WINDOWS
     CreateConsoleWindow();
 #endif
     
-    printf("=== Qt Entry Point ===\n");
-    
-    char cwd[1024];
-    if (GetCurrentDirectoryA(sizeof(cwd), cwd))
-    {
-        printf("Working directory: %s\n", cwd);
-    }
-    
-    printf("argc: %d\n", _argc);
-    for (int i = 0; i < _argc; i++) {
-        printf("argv[%d]: %s\n", i, _argv[i]);
-    }
-    
-    printf("Calling entry::main...\n");
     int result = entry::main(_argc, const_cast<const char**>(_argv));
     
-    printf("=== Exiting with result: %d ===\n", result);
-    
-#if BX_PLATFORM_WINDOWS
-    printf("\nPress Enter to close console...\n");
-    getchar();
-#endif
+    // Cleanup
+    if (entry::s_window)
+    {
+        delete entry::s_window;
+        entry::s_window = nullptr;
+    }
     
     if (entry::s_app)
     {
