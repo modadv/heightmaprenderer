@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.14)
 
 # 定义项目名称和使用的编程语言
 # project() 命令会自动创建一些变量，如 PROJECT_NAME, PROJECT_SOURCE_DIR 等
-project(heightmaprenderer)
+project(omniengine)
 
 # ========================================
 # 编译器和构建配置
@@ -30,6 +30,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
 
 # ========================================
+# Qt Support Option
+# ========================================
+option(USE_QT_ENTRY "Use Qt QML as entry point" ON)
+
+# ========================================
 # 外部依赖配置 - bgfx.cmake
 # ========================================
 
@@ -42,7 +47,7 @@ set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # 添加 bgfx.cmake 作为子项目
 # add_subdirectory 会处理指定目录中的 CMakeLists.txt
 # 这会构建 bgfx、bimg、bx 库和 shaderc 工具
-add_subdirectory(external/bgfx.cmake)
+add_subdirectory(bgfx.cmake)
 
 # ========================================
 # 着色器编译配置
@@ -68,13 +73,11 @@ set(VARYING_DEF ${SHADER_SOURCE_DIR}/varying.def.sc)
 # 这些路径用于查找着色器中 #include 的文件
 set(SHADER_INCLUDE_PATHS
     # bgfx 内部着色器头文件（包含 bgfx_shader.sh 等核心文件）
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/bgfx.cmake/bgfx/src
     # 项目的着色器目录（包含自定义的 .sh 文件）
     ${SHADER_SOURCE_DIR}
     # common 目录（包含 common.sh 和 shaderlib.sh）
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common
-    # bgfx examples 的 common 目录（可能包含额外的辅助着色器）
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/examples/common
 )
 
 # 构建 shaderc 的包含路径参数列表
@@ -302,60 +305,68 @@ set(HEIGHTMAP_SOURCE_FILES
 
 # 定义通用源文件列表（所有平台都需要的文件）
 set(COMMON_SOURCE_FILES
-    src/common/bgfx_utils.cpp       # bgfx 实用工具函数
-    src/common/camera.cpp            # 相机控制
-    src/common/cube_atlas.cpp        # 立方体纹理图集
-    src/common/example-glue.cpp     # 示例程序粘合代码
+    src/common/bgfx_utils.cpp       # bgfx utility functions
+    src/common/camera.cpp            # camera control
+    src/common/cube_atlas.cpp        # cube texture atlas
+    src/common/example-glue.cpp     # example glue code
 )
 
 # 使用 GLOB 收集子目录中的所有源文件
 # file(GLOB ...) 会查找匹配模式的所有文件
-file(GLOB DEBUGDRAW_SOURCES src/common/debugdraw/*.cpp)    # 调试绘制
-file(GLOB ENTRY_SOURCES src/common/entry/*.cpp)            # 程序入口
-file(GLOB FONT_SOURCES src/common/font/*.cpp)              # 字体渲染
-file(GLOB IMGUI_SOURCES src/common/imgui/*.cpp)            # Dear ImGui 界面
-file(GLOB NANOVG_SOURCES src/common/nanovg/*.cpp)          # NanoVG 矢量图形
-file(GLOB PS_SOURCES src/common/ps/*.cpp)                  # 粒子系统
+file(GLOB DEBUGDRAW_SOURCES src/common/debugdraw/*.cpp)    # debug drawing
+file(GLOB ENTRY_SOURCES src/common/entry/*.cpp)            # entry point
+file(GLOB FONT_SOURCES src/common/font/*.cpp)              # font rendering
+file(GLOB IMGUI_SOURCES src/common/imgui/*.cpp)            # Dear ImGui UI
+file(GLOB NANOVG_SOURCES src/common/nanovg/*.cpp)          # NanoVG vector graphics
+file(GLOB PS_SOURCES src/common/ps/*.cpp)                  # particle system
 
-# 移除平台特定的 entry 文件，避免编译错误的平台代码
-if(WIN32)
-    # Windows 平台：移除其他平台的入口文件
-    list(REMOVE_ITEM ENTRY_SOURCES 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_x11.cpp      # Linux X11
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_osx.mm      # macOS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_ios.mm      # iOS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp # Android
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_asmjs.cpp   # Emscripten
-    )
-elseif(APPLE)
-    # macOS 平台：移除其他平台的入口文件
-    list(REMOVE_ITEM ENTRY_SOURCES 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_windows.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_x11.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_asmjs.cpp
-    )
-    # 设置 Objective-C++ 编译标志（.mm 文件）
-    set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_osx.mm 
-        PROPERTIES COMPILE_FLAGS "-x objective-c++"
-    )
-elseif(UNIX)
-    # Linux 平台：移除其他平台的入口文件
-    list(REMOVE_ITEM ENTRY_SOURCES 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_windows.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_osx.mm
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_ios.mm
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_asmjs.cpp
-    )
+# ========================================
+# Qt Configuration
+# ========================================
+
+# Find Qt 5.15
+find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+
+# Enable automatic MOC and RCC
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+# Qt specific compile definitions
+add_compile_definitions(
+    ENTRY_CONFIG_USE_NATIVE=0
+)
+
+# Add Qt resource files if they exist
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/res/qml/resources.qrc)
+    set(QT_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/res/qml/resources.qrc)
 endif()
 
+message(STATUS "Qt entry enabled with Qt version: ${Qt5_VERSION}")
+
 # ========================================
-# 主程序源文件和头文件收集
+# Platform specific entry file filtering
 # ========================================
 
-# 收集所有源文件和头文件
+
+# When using Qt, remove all native entry files
+list(REMOVE_ITEM ENTRY_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_windows.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_x11.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_osx.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_ios.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_android.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_asmjs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_glfw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_sdl.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_noop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_html5.cpp
+)
+
+# ========================================
+# Collect all source and header files
+# ========================================
+
+# Collect all source files and header files
 file(GLOB_RECURSE ALL_SOURCE_FILES 
     src/*.cpp
     src/*.c
@@ -366,146 +377,113 @@ file(GLOB_RECURSE ALL_HEADER_FILES
     src/*.hpp
 )
 
-# 如果有 .mm 文件（macOS）
+# If there are .mm files (macOS)
 if(APPLE)
     file(GLOB_RECURSE OBJC_SOURCES src/*.mm)
     list(APPEND ALL_SOURCE_FILES ${OBJC_SOURCES})
 endif()
 
-# 合并所有文件
+# Merge all files
 set(ALL_PROJECT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
-# 移除平台特定的 entry 文件
-if(WIN32)
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_x11\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_osx\\.mm$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_ios\\.mm$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
-elseif(APPLE)
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_windows\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_x11\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
-elseif(UNIX)
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_windows\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_osx\\.mm$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_ios\\.mm$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
-    list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
-endif()
+# Add Qt resources if available
+
+list(APPEND ALL_PROJECT_FILES ${QT_RESOURCES})
+
+# Remove all native entry files when using Qt
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_windows\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_x11\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_osx\\.mm$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_ios\\.mm$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_android\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_asmjs\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_html5\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_glfw\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_sdl\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_noop\\.cpp$")
 
 # ========================================
-# 创建可执行文件目标
+# Create executable target
 # ========================================
-
 add_executable(${PROJECT_NAME} ${ALL_PROJECT_FILES})
 
 # ========================================
-# 源文件组织（IDE 中的文件夹结构）
+# Set include directories
 # ========================================
-
-# 使用 TREE 选项自动根据文件系统结构创建虚拟文件夹
-# PREFIX 设置虚拟文件夹的根名称
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${ALL_PROJECT_FILES})
-
-# 着色器文件单独组织
-file(GLOB_RECURSE SHADER_FILES
-    src/shaders/*.sc
-    src/shaders/*.sh
-    src/common/*.sh
-)
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Shaders" FILES ${SHADER_FILES})
-
-# ========================================
-# 设置包含目录（头文件搜索路径）
-# ========================================
-
-# target_include_directories 设置目标的包含目录
-# PRIVATE 表示这些目录只对当前目标可见
 target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src                    # 项目源代码目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/common             # common 目录
-    # bgfx 相关的包含目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/include      # bgfx 公共头文件
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include        # bx 工具库头文件
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bimg/include      # bimg 图像库头文件
-    # 第三方库目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty     # bgfx 第三方库根目录
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/dear-imgui   # Dear ImGui
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/meshoptimizer # 网格优化器
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bgfx/3rdparty/stb          # STB 单头文件库
-    ${SHADER_INCLUDE_DIR}  # 生成的着色器头文件目录
+    ${CMAKE_CURRENT_SOURCE_DIR}/src                    # Project source directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common             # Common directory
+    # bgfx related include directories
+    ${CMAKE_CURRENT_SOURCE_DIR}/bgfx.cmake/bx/include        # bx utility library headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/bgfx.cmake/bimg/include      # bimg image library headers    # STB single header libraries
+    ${SHADER_INCLUDE_DIR}  # Generated shader header directory
 )
 
-# 如果 bgfx.cmake 有自己的第三方库位置，也添加这些路径
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty)
-    target_include_directories(${PROJECT_NAME} PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/dear-imgui
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/meshoptimizer
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/3rdparty/stb
-    )
-endif()
-
-# 平台特定的包含目录
+# Platform specific include directories
 if(WIN32)
-    # Windows 平台需要 MSVC 兼容性头文件
+    # Windows platform needs MSVC compatibility headers
     target_include_directories(${PROJECT_NAME} PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include/compat/msvc
+        ${CMAKE_CURRENT_SOURCE_DIR}/bgfx.cmake/bx/include/compat/msvc
     )
 elseif(APPLE)
-    # macOS 平台需要 OSX 兼容性头文件
+    # macOS platform needs OSX compatibility headers
     target_include_directories(${PROJECT_NAME} PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/bgfx.cmake/bx/include/compat/osx
+        ${CMAKE_CURRENT_SOURCE_DIR}/bgfx.cmake/bx/include/compat/osx
     )
 endif()
 
 # ========================================
-# 设置预处理器定义（编译时宏）
+# Set preprocessor definitions
 # ========================================
 
-# target_compile_definitions 设置编译时的宏定义
+# target_compile_definitions sets compile-time macros
 target_compile_definitions(${PROJECT_NAME} PUBLIC
-    # Entry 系统需要这个宏来正确实现 main 函数
-    ENTRY_CONFIG_IMPLEMENT_MAIN=0
+    # Entry system needs this macro to properly implement main function
+    ENTRY_CONFIG_IMPLEMENT_MAIN=1
     
-    # 根据构建配置设置调试宏
-    # $<$<CONFIG:Debug>:...> 是生成器表达式，只在 Debug 配置时生效
+    # Set debug macro based on build configuration
+    # $<$<CONFIG:Debug>:...> is a generator expression that only applies in Debug configuration
     $<$<CONFIG:Debug>:BX_CONFIG_DEBUG=1>
     $<$<CONFIG:Release>:BX_CONFIG_DEBUG=0>
 )
 
-# 平台特定的预处理器定义
+# Platform specific preprocessor definitions
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _WIN32                          # Windows 32 位标识（64 位系统也定义）
-        _WIN64                          # Windows 64 位标识
-        _CRT_SECURE_NO_WARNINGS         # 禁用 MSVC 的安全警告
-        __STDC_FORMAT_MACROS            # 启用 C99 格式宏
+        BX_PLATFORM_WINDOWS=1
+        _WIN32                          # Windows 32-bit identifier (also defined on 64-bit)
+        _WIN64                          # Windows 64-bit identifier
+        _CRT_SECURE_NO_WARNINGS         # Disable MSVC security warnings
+        __STDC_FORMAT_MACROS            # Enable C99 format macros
     )
 elseif(APPLE)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        __APPLE__                       # Apple 平台标识
+        BX_PLATFORM_OSX=1
+        __APPLE__                       # Apple platform identifier
     )
 elseif(UNIX)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        __linux__                       # Linux 平台标识
+        BX_PLATFORM_LINUX=1
+        __linux__                       # Linux platform identifier
     )
 endif()
 
 # ========================================
-# 链接库
+# Link libraries
 # ========================================
 
-# target_link_libraries 指定要链接的库
+# Conditionally link Qt libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC
-    bgfx    # bgfx 图形库
-    bimg    # bimg 图像处理库
-    bx      # bx 基础工具库
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Qml
+    Qt5::Quick
+    Qt5::QuickControls2
+    bgfx
+    bx
+    bimg
 )
-
-# 如果 bgfx.cmake 构建了第三方库目标，链接它们
+# If bgfx.cmake built third party library targets, link them
 if(TARGET dear-imgui)
     target_link_libraries(${PROJECT_NAME} PUBLIC dear-imgui)
 endif()
@@ -513,69 +491,47 @@ if(TARGET meshoptimizer)
     target_link_libraries(${PROJECT_NAME} PUBLIC meshoptimizer)
 endif()
 
-# 确保着色器在主程序之前编译
-# add_dependencies 创建目标间的依赖关系
+# Ensure shaders are compiled before main program
+# add_dependencies creates dependencies between targets
 add_dependencies(${PROJECT_NAME} shaders)
 
 # ========================================
-# 平台特定的链接配置
+# Platform specific link configuration
 # ========================================
 
 if(WIN32)
-    # Windows 平台需要链接的系统库
-    target_link_libraries(${PROJECT_NAME} PUBLIC 
-        psapi    # Process Status API，用于进程信息
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
     )
-    # 设置链接器标志
-    # 使用控制台子系统（entry 系统会创建窗口）
+    # Windows platform system libraries
+    target_link_libraries(${PROJECT_NAME} PUBLIC 
+        psapi    # Process Status API for process information
+    )
+    
+    # Qt applications should use Windows subsystem
     set_target_properties(${PROJECT_NAME} PROPERTIES 
-        LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"      # Debug 使用控制台
-        LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE"    # Release 也使用控制台
-    )
-endif()
-
-if(UNIX AND NOT APPLE)
-    # Linux 平台需要的库
-    find_package(X11 REQUIRED)          # X11 窗口系统
-    find_package(OpenGL REQUIRED)       # OpenGL 图形库
-    target_link_libraries(${PROJECT_NAME} PUBLIC 
-        ${X11_LIBRARIES}                # X11 库
-        ${OPENGL_LIBRARIES}             # OpenGL 库
-        pthread                          # POSIX 线程库
-        dl                               # 动态链接库
-    )
-endif()
-
-if(APPLE)
-    # macOS 平台需要的框架
-    find_library(COCOA_LIBRARY Cocoa)           # Cocoa 框架（窗口和事件）
-    find_library(METAL_LIBRARY Metal)           # Metal 图形框架
-    find_library(QUARTZCORE_LIBRARY QuartzCore) # Core Animation 框架
-    find_library(IOKIT_LIBRARY IOKit)           # I/O Kit 框架
-    target_link_libraries(${PROJECT_NAME} PUBLIC 
-        ${COCOA_LIBRARY}
-        ${METAL_LIBRARY}
-        ${QUARTZCORE_LIBRARY}
-        ${IOKIT_LIBRARY}
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS"
+        LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS"
     )
 endif()
 
 # ========================================
-# 资源文件复制配置
+# Resource file copy configuration
 # ========================================
 
-# 使用 add_custom_command 在构建后复制资源文件
-# POST_BUILD 表示在目标构建完成后执行
+# Use add_custom_command to copy resource files after build
+# POST_BUILD means execute after target is built
 
-# 复制 runtime 目录的所有内容到 bin 目录
-# 这包括字体、图像、网格、着色器、纹理等运行时资源
+# Copy all runtime directory contents to bin directory
+# This includes fonts, images, meshes, shaders, textures and other runtime resources
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/res/runtime $<TARGET_FILE_DIR:${PROJECT_NAME}>
     COMMENT "Copying runtime contents to bin directory..."
 )
 
-# 复制编译后的着色器，覆盖默认的着色器文件
+# Copy compiled shaders, overwriting default shader files
 foreach(RENDERER ${RENDERERS})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -585,58 +541,57 @@ foreach(RENDERER ${RENDERERS})
 endforeach()
 
 # ========================================
-# Visual Studio 特定配置
+# Visual Studio specific configuration
 # ========================================
 
 if(MSVC)
-    # 设置 VS 调试器的工作目录
-    # 这确保在 VS 中按 F5 调试时，程序能找到资源文件
+    # Set VS debugger working directory
+    # This ensures when pressing F5 to debug in VS, the program can find resource files
     set_property(TARGET ${PROJECT_NAME} PROPERTY 
         VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()
 
-# 设置项目为 VS 的启动项目
-# 这样打开解决方案时，heightmaprenderer 会被设为默认启动项目
+# Set project as VS startup project
+# This makes omniengine the default startup project when opening the solution
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY 
     VS_STARTUP_PROJECT ${PROJECT_NAME}
 )
 
 # ========================================
-# 源文件组织（IDE 中的文件夹结构）
+# Source file organization (folder structure in IDE)
 # ========================================
 
-# source_group 在 IDE（如 Visual Studio）中创建虚拟文件夹
-# 这不影响编译，只是为了更好地组织文件显示
-source_group("Source Files\\Common" FILES ${COMMON_SOURCE_FILES})
-source_group("Source Files\\Common\\DebugDraw" FILES ${DEBUGDRAW_SOURCES})
-source_group("Source Files\\Common\\Entry" FILES ${ENTRY_SOURCES})
-source_group("Source Files\\Common\\Font" FILES ${FONT_SOURCES})
-source_group("Source Files\\Common\\ImGui" FILES ${IMGUI_SOURCES})
-source_group("Source Files\\Common\\NanoVG" FILES ${NANOVG_SOURCES})
-source_group("Source Files\\Common\\PS" FILES ${PS_SOURCES})
-# 使用正则表达式匹配着色器文件
-source_group("Shaders\\Source" REGULAR_EXPRESSION ".*\\.sc$")
-source_group("Shaders\\Include" REGULAR_EXPRESSION ".*\\.sh$")
+# Use TREE option to automatically create virtual folders based on file system structure
+# PREFIX sets the root name of virtual folders
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${ALL_PROJECT_FILES})
+
+# Organize shader files separately
+file(GLOB_RECURSE SHADER_FILES
+    src/shaders/*.sc
+    src/shaders/*.sh
+    src/common/*.sh
+)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Shaders" FILES ${SHADER_FILES})
 
 # ========================================
-# 安装配置（用于打包发布）
+# Installation configuration (for packaging)
 # ========================================
 
-# 设置安装目录前缀
+# Set installation directory prefix
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install CACHE PATH "Installation Directory")
 
-# 安装可执行文件到根目录
+# Install executable to root directory
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION .
 )
 
-# 安装 runtime 目录的所有内容
+# Install all runtime directory contents
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/runtime/
     DESTINATION .
 )
 
-# 安装编译后的着色器（覆盖默认的）
+# Install compiled shaders (overwrite defaults)
 foreach(RENDERER ${RENDERERS})
     if(EXISTS ${SHADER_OUTPUT_DIR}/${RENDERER})
         install(DIRECTORY ${SHADER_OUTPUT_DIR}/${RENDERER}/
@@ -646,10 +601,10 @@ foreach(RENDERER ${RENDERERS})
 endforeach()
 
 # ========================================
-# 配置信息输出
+# Configuration information output
 # ========================================
 
-# 输出配置信息，帮助调试和确认设置
+# Output configuration information to help debug and confirm settings
 message(STATUS "========================================")
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -659,4 +614,7 @@ message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(STATUS "Shader output: ${SHADER_OUTPUT_DIR}")
 message(STATUS "Shader headers: ${SHADER_INCLUDE_DIR}")
+
+message(STATUS "Entry system: Qt QML")
+message(STATUS "Qt version: ${Qt5_VERSION}")
 message(STATUS "========================================")
