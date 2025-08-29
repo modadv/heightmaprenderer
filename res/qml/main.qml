@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import BgfxModule 1.0
+import com.example.bgfx 1.0
 
 ApplicationWindow {
     id: mainWindow
@@ -73,44 +73,11 @@ ApplicationWindow {
             }
 
             // 右下角 - BGFX渲染区域
-            Item {
-                id: bgfxContainer
+            BgfxItem {
+                id: bgfxItem
+                objectName: "bgfxItem"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                
-                // 添加边框以可视化容器
-                Rectangle {
-                    anchors.fill: parent
-                    color: "transparent"
-                    border.color: "red"
-                    border.width: 2
-                    z: 10  // 确保边框在最上层
-                }
-                
-                // 添加标签
-                Text {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 5
-                    text: "BGFX Area: " + Math.round(parent.width) + "x" + Math.round(parent.height)
-                    color: "yellow"
-                    z: 11
-                    font.pixelSize: 12
-                    font.bold: true
-                }
-
-                BgfxItem {
-                    id: bgfxItem
-                    objectName: "bgfxRenderer" // <--- 添加这一行
-                    anchors.fill: parent
-                    
-                    onWidthChanged: {
-                        console.log("BgfxItem width changed to:", width)
-                    }
-                    onHeightChanged: {
-                        console.log("BgfxItem height changed to:", height)
-                    }
-                }
             }
         }
     }

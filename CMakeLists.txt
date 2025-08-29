@@ -360,7 +360,8 @@ list(REMOVE_ITEM ENTRY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_sdl.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_noop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_html5.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry_qt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/entry/entry.cpp
 )
 
 # ========================================
@@ -402,6 +403,8 @@ list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_html5\\.cpp$")
 list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_glfw\\.cpp$")
 list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_sdl\\.cpp$")
 list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_noop\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry_qt\\.cpp$")
+list(FILTER ALL_PROJECT_FILES EXCLUDE REGEX ".*entry\\.cpp$")
 
 # ========================================
 # Create executable target
