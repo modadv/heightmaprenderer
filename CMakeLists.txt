@@ -340,9 +340,7 @@ add_compile_definitions(
 )
 
 # Add Qt resource files if they exist
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/res/qml/resources.qrc)
-    set(QT_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/res/qml/resources.qrc)
-endif()
+qt5_add_resources(QT_RESOURCES "${CMAKE_SOURCE_DIR}/res/resources.qrc")
 
 message(STATUS "Qt entry enabled with Qt version: ${Qt5_VERSION}")
 
@@ -564,10 +562,6 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY
 # ========================================
 # Source file organization (folder structure in IDE)
 # ========================================
-
-# Use TREE option to automatically create virtual folders based on file system structure
-# PREFIX sets the root name of virtual folders
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${ALL_PROJECT_FILES})
 
 # Organize shader files separately
 file(GLOB_RECURSE SHADER_FILES
