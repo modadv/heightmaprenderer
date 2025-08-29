@@ -451,7 +451,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 # Platform specific preprocessor definitions
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        BX_PLATFORM_WINDOWS=1
         _WIN32                          # Windows 32-bit identifier (also defined on 64-bit)
         _WIN64                          # Windows 64-bit identifier
         _CRT_SECURE_NO_WARNINGS         # Disable MSVC security warnings
