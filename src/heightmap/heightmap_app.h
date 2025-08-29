@@ -5,10 +5,19 @@
 #include "common/imgui/imgui.h"
 #include "common/bgfx_utils.h"
 
+#include <stdio.h>
+#include <cstdio>
+
+
+namespace entry { void getViewport(int& x, int& y, int& w, int& h); }
+
 class HeightmapApp : public entry::AppI {
 public:
     HeightmapApp(const char* name, const char* description, const char* url)
         : entry::AppI(name, description, url) {}
+
+    // 添加虚析构函数实现
+    virtual ~HeightmapApp() override = default;
 
     void init(int32_t argc, const char* const* argv, uint32_t width, uint32_t height) override {
         Args args(argc, argv);
@@ -17,6 +26,8 @@ public:
         m_height = height;
         m_debug = BGFX_DEBUG_NONE;
         m_reset = BGFX_RESET_NONE;
+
+        printf("HeightmapApp::init() called with %dx%d\n", width, height);
 
         // Initialize bgfx
         bgfx::Init init;
@@ -43,9 +54,13 @@ public:
         m_heightmapRenderer.init(m_width, m_height);
         
         m_timeOffset = bx::getHPCounter();
+        
+        printf("HeightmapApp::init() completed\n");
     }
 
+    // 添加shutdown方法实现
     int shutdown() override {
+        printf("HeightmapApp::shutdown() called\n");
         m_heightmapRenderer.shutdown();
         cameraDestroy();
         imguiDestroy();
@@ -53,14 +68,48 @@ public:
         return 0;
     }
 
+
     bool update() override {
+        int vx, vy, vw, vh;
+        entry::getViewport(vx, vy, vw, vh);
+        m_heightmapRenderer.setViewport(vx, vy, vw, vh);
+
+        uint32_t oldWidth = m_width;
+        uint32_t oldHeight = m_height;
+        
         if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState)) {
+
             int64_t now = bx::getHPCounter();
             static int64_t last = now;
             const int64_t frameTime = now - last;
             last = now;
             const double freq = double(bx::getHPFrequency());
             const float deltaTime = float(frameTime / freq);
+
+            // 添加调试信息
+            static int frameCount = 0;
+            frameCount++;
+            if (frameCount % 60 == 0) {
+                printf("HeightmapApp::update() frame %d, window size: %dx%d\n",
+                    frameCount, m_width, m_height);
+            }
+
+            // *** 关键修改：检查processEvents是否改变了尺寸 ***
+            if (m_width != oldWidth || m_height != oldHeight) {
+                printf("HeightmapApp processEvents changed size from %dx%d to %dx%d\n",
+                    oldWidth, oldHeight, m_width, m_height);
+                    
+                // 立即更新渲染器尺寸
+                m_heightmapRenderer.updateSize(m_width, m_height);
+                
+                // BGFX后台缓冲区已经在processEvents中被重置了
+            } else {
+                // 每次都调用updateSize确保同步（临时调试）
+                if (frameCount % 60 == 0) {
+                    printf("Forcing renderer size update to %dx%d\n", m_width, m_height);
+                    m_heightmapRenderer.updateSize(m_width, m_height);
+                }
+            }
 
             // Begin ImGui frame
             imguiBeginFrame(
@@ -102,9 +151,11 @@ private:
         if (m_heightmapRenderer.getGpuSmapTime() > 0.0f) {
             ImGui::Text("GPU SMap: %.2f ms", m_heightmapRenderer.getGpuSmapTime());
         }
-
-        // Controls will be moved to HeightmapRenderer's UI method
-        // For now, just show basic info
+        
+        // 添加调试信息显示
+        ImGui::Separator();
+        ImGui::Text("Debug Info:");
+        ImGui::Text("App size: %dx%d", m_width, m_height);
         
         ImGui::End();
     }

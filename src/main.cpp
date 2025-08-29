@@ -14,6 +14,8 @@
 
 #if BX_PLATFORM_WINDOWS
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #elif BX_PLATFORM_LINUX
 #include <X11/Xlib.h>
 #include <qpa/qplatformnativeinterface.h>
@@ -21,6 +23,7 @@
 
 namespace entry
 {
+    void getViewport(int& x, int& y, int& width, int& height);
     // 键盘和鼠标映射函数（保持不变）
     static Key::Enum translateKey(int qtKey)
     {
@@ -76,13 +79,13 @@ namespace entry
         }
     }
     // BGFX Quick Item for QML - 作为占位符和事件处理
-    class BgfxQuickItem : public QQuickItem
+    class BgfxItem : public QQuickItem
     {
         Q_OBJECT
             Q_PROPERTY(bool renderingEnabled READ renderingEnabled WRITE setRenderingEnabled NOTIFY renderingEnabledChanged)
 
     public:
-        BgfxQuickItem(QQuickItem* parent = nullptr)
+        BgfxItem(QQuickItem* parent = nullptr)
             : QQuickItem(parent)
             , m_renderingEnabled(true)
             , m_eventQueue(nullptr)
@@ -93,10 +96,10 @@ namespace entry
             setFocus(true);
 
             // 监听位置和大小变化
-            connect(this, &QQuickItem::xChanged, this, &BgfxQuickItem::updateViewport);
-            connect(this, &QQuickItem::yChanged, this, &BgfxQuickItem::updateViewport);
-            connect(this, &QQuickItem::widthChanged, this, &BgfxQuickItem::updateViewport);
-            connect(this, &QQuickItem::heightChanged, this, &BgfxQuickItem::updateViewport);
+            connect(this, &QQuickItem::xChanged, this, &BgfxItem::updateViewport);
+            connect(this, &QQuickItem::yChanged, this, &BgfxItem::updateViewport);
+            connect(this, &QQuickItem::widthChanged, this, &BgfxItem::updateViewport);
+            connect(this, &QQuickItem::heightChanged, this, &BgfxItem::updateViewport);
         }
 
         bool renderingEnabled() const { return m_renderingEnabled; }
@@ -133,15 +136,19 @@ namespace entry
             QRect rect = getViewportRect();
             if (rect.isValid())
             {
+                printf("BgfxItem::updateViewport() - QML size: %dx%d, position: %d,%d\n", 
+                    rect.width(), rect.height(), rect.x(), rect.y());
+                
                 emit viewportChanged(rect.x(), rect.y(), rect.width(), rect.height());
 
                 // 通知 BGFX 视口变化
-                if (m_eventQueue)
-                {
-                    // 发送自定义的视口变化事件
-                    // 注意：这里我们发送的是控件的大小，而不是窗口的大小
-                    m_eventQueue->postSizeEvent(kDefaultWindowHandle, rect.width(), rect.height());
-                }
+                // if (m_eventQueue)
+                // {
+                //     printf("BgfxItem sending size event: %dx%d\n", rect.width(), rect.height());
+                //     // 发送自定义的视口变化事件
+                //     // 注意：这里我们发送的是控件的大小，而不是窗口的大小
+                //     // m_eventQueue->postSizeEvent(kDefaultWindowHandle, rect.width(), rect.height());
+                // }
             }
         }
 
@@ -233,7 +240,7 @@ namespace entry
     // Static variables
     static QGuiApplication* s_app = nullptr;
     static QQmlApplicationEngine* s_engine = nullptr;
-    static BgfxQuickItem* s_bgfxItem = nullptr;
+    static BgfxItem* s_bgfxItem = nullptr;
     static QWindow* s_window = nullptr;
     static QQuickWindow* s_quickWindow = nullptr;
     static EventQueue s_eventQueue;
@@ -278,7 +285,7 @@ namespace entry
             {
                 s_engine = new QQmlApplicationEngine();
 
-                qmlRegisterType<BgfxQuickItem>("BgfxModule", 1, 0, "BgfxItem");
+                qmlRegisterType<BgfxItem>("BgfxModule", 1, 0, "BgfxItem");
 
                 s_engine->load("qrc:qml/main.qml");
                 if (!s_engine->rootObjects().isEmpty())
@@ -292,13 +299,13 @@ namespace entry
                         s_quickWindow->setY(s_windowParams.y);
                         s_quickWindow->resize(s_windowParams.width, s_windowParams.height);
 
-                        s_bgfxItem = s_quickWindow->findChild<BgfxQuickItem*>("bgfxRenderer");
+                        s_bgfxItem = s_quickWindow->findChild<BgfxItem*>("bgfxRenderer");
                         if (s_bgfxItem)
                         {
                             s_bgfxItem->setEventQueue(&s_eventQueue);
 
                             // 连接视口变化信号
-                            QObject::connect(s_bgfxItem, &BgfxQuickItem::viewportChanged,
+                            QObject::connect(s_bgfxItem, &BgfxItem::viewportChanged,
                                 [](int x, int y, int width, int height) {
                                     s_viewport.x = x;
                                     s_viewport.y = y;
@@ -325,6 +332,7 @@ namespace entry
             y = s_viewport.y;
             width = s_viewport.width;
             height = s_viewport.height;
+            printf("getViewport returning: %d,%d %dx%d\n", x, y, width, height);
         }
         else
         {
@@ -332,6 +340,7 @@ namespace entry
             y = 0;
             width = s_windowParams.width;
             height = s_windowParams.height;
+            printf("getViewport returning default: %d,%d %dx%d\n", x, y, width, height);
         }
     }
 
@@ -514,10 +523,31 @@ namespace entry
 
 #include "main.moc"
 
+
 int main(int _argc, char** _argv)
 {
+#ifdef _WIN32
+    // 为GUI应用程序分配控制台窗口
+    if (AllocConsole()) {
+        FILE* pCout;
+        FILE* pCerr;
+        FILE* pCin;
+        
+        freopen_s(&pCout, "CONOUT$", "w", stdout);
+        freopen_s(&pCerr, "CONOUT$", "w", stderr);
+        freopen_s(&pCin, "CONIN$", "r", stdin);
+        
+        SetConsoleTitleA("BGFX Heightmap Debug Console");
+        
+        printf("=== Debug Console Allocated ===\n");
+        printf("This console will show printf output from the application.\n");
+        printf("========================================\n\n");
+    }
+#endif
+
     int result = entry::main(_argc, const_cast<const char**>(_argv));
 
+    // 清理
     if (entry::s_engine)
     {
         delete entry::s_engine;
@@ -529,6 +559,10 @@ int main(int _argc, char** _argv)
         delete entry::s_app;
         entry::s_app = nullptr;
     }
+
+#ifdef _WIN32
+    FreeConsole();
+#endif
 
     return result;
 }

@@ -63,6 +63,37 @@ HeightmapRenderer::HeightmapRenderer()
     // Initialize paths
     m_heightmapPath[0] = '\0';
     m_diffuseTexturePath[0] = '\0';
+
+    m_viewport.x = 0;
+    m_viewport.y = 0;
+    m_viewport.width = 1280;
+    m_viewport.height = 720;
+    m_viewport.useCustomViewport = false;
+}
+
+void HeightmapRenderer::setViewport(int x, int y, int width, int height) {
+    m_viewport.x = x;
+    m_viewport.y = y;
+    m_viewport.width = width;
+    m_viewport.height = height;
+    m_viewport.useCustomViewport = true;
+
+    printf("HeightmapRenderer viewport set to: %d,%d %dx%d\n", x, y, width, height);
+}
+
+void HeightmapRenderer::getViewport(int& x, int& y, int& width, int& height) const {
+    if (m_viewport.useCustomViewport) {
+        x = m_viewport.x;
+        y = m_viewport.y;
+        width = m_viewport.width;
+        height = m_viewport.height;
+    }
+    else {
+        x = 0;
+        y = 0;
+        width = m_width;
+        height = m_height;
+    }
 }
 
 HeightmapRenderer::~HeightmapRenderer() {
@@ -189,6 +220,12 @@ void HeightmapRenderer::shutdown() {
 }
 
 bool HeightmapRenderer::update(float deltaTime, const entry::MouseState& mouseState) {
+    static int updateCount = 0;
+    updateCount++;
+    if (updateCount % 60 == 0) {
+        printf("HeightmapRenderer::update() frame %d, renderer size: %dx%d\n", 
+            updateCount, m_width, m_height);
+    }
     // Calculate first frame loading time
     if (!m_firstFrameRendered) {
         int64_t now = bx::getHPCounter();
@@ -260,25 +297,42 @@ bool HeightmapRenderer::update(float deltaTime, const entry::MouseState& mouseSt
 
         m_restart = true;
     }
-
+    
     // Configure uniforms
     configureUniforms();
 
-    // Get camera matrices
+    // 获取子视口（若未设置则回落到整窗）
+    int vx, vy, vw, vh;
+    getViewport(vx, vy, vw, vh);
+
+    // 用子视口的宽高计算投影长宽比
     float viewMtx[16];
     float projMtx[16];
     cameraGetViewMtx(viewMtx);
-    bx::mtxProj(projMtx, m_fovy, float(m_width) / float(m_height), 0.0001f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
+    bx::mtxProj(projMtx, m_fovy, float(vw)/float(vh), 0.0001f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
 
-    // Set view transforms
+    // 设置两个 view 的矩形都为子视口区域（右下 1/4）
     bgfx::setViewTransform(0, viewMtx, projMtx);
-    bgfx::setViewRect(1, 0, 0, uint16_t(m_width), uint16_t(m_height));
+    bgfx::setViewRect(0, uint16_t(vx), uint16_t(vy), uint16_t(vw), uint16_t(vh));
+
     bgfx::setViewTransform(1, viewMtx, projMtx);
+    bgfx::setViewRect(1, uint16_t(vx), uint16_t(vy), uint16_t(vw), uint16_t(vh));
+
+
 
     // Render terrain
     renderTerrain(viewMtx, projMtx);
 
     return true;
+}
+
+void HeightmapRenderer::updateSize(uint32_t width, uint32_t height) {
+    if (m_width != width || m_height != height) {
+        printf("HeightmapRenderer::updateSize() from %dx%d to %dx%d\n", 
+            m_width, m_height, width, height);
+        m_width = width;
+        m_height = height;
+    }
 }
 
 void HeightmapRenderer::setGpuSubdivision(int level) {

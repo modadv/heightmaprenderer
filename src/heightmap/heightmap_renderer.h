@@ -79,6 +79,9 @@ public:
     void updateTexturePaths();
     void renderTerrain(const float* viewMtx, const float* projMtx);
 
+    void setViewport(int x, int y, int width, int height);
+    void getViewport(int& x, int& y, int& width, int& height) const;
+    void updateSize(uint32_t width, uint32_t height);
 private:
     // Resources
     Uniforms m_uniforms;
@@ -144,4 +147,12 @@ private:
     // Paths
     char m_heightmapPath[256];
     char m_diffuseTexturePath[256];
+
+    struct ViewportInfo {
+        int x = 0;
+        int y = 0;
+        int width = 1280;
+        int height = 720;
+        bool useCustomViewport = false;
+    } m_viewport;
 };
