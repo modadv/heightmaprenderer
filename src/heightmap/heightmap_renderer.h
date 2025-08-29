@@ -56,7 +56,6 @@ public:
     float getCpuSmapTime() const { return m_cpuSmapGenTime; }
     float getGpuSmapTime() const { return m_gpuSmapGenTime; }
 
-private:
     // Initialization methods
     void loadPrograms();
     void loadTextures();
@@ -80,6 +79,7 @@ private:
     void updateTexturePaths();
     void renderTerrain(const float* viewMtx, const float* projMtx);
 
+private:
     // Resources
     Uniforms m_uniforms;
     

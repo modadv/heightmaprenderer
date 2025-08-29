@@ -327,9 +327,12 @@ file(GLOB PS_SOURCES src/common/ps/*.cpp)                  # particle system
 # Find Qt 5.15
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 
-# Enable automatic MOC and RCC
+# ========================================
+# Qt Support
+# ========================================
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 # Qt specific compile definitions
 add_compile_definitions(
