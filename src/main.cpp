@@ -1,4 +1,4 @@
-#include "entry_p.h"
+#include "common/entry/entry_p.h"
 
 #include <bgfx/platform.h>
 #include <bgfx/bgfx.h>
@@ -847,7 +847,7 @@ namespace entry
 
 } // namespace entry
 
-#include "entry_qt.moc"
+#include "main.moc"
 
 int main(int _argc, char** _argv)
 {

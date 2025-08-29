@@ -632,20 +632,13 @@ restart:
 			{
 				selected = app;
 			}
-#if 0
-			DBG("%c %s, %s"
-				, app == selected ? '>' : ' '
-				, app->getName()
-				, app->getDescription()
-				);
-#endif // 0
 		}
 
 		int32_t result = bx::kExitSuccess;
 		s_restartArgs[0] = '\0';
 		if (0 == s_numApps)
 		{
-			ExampleHeightmap app("Heightmap", "Adaptive GPU Tessellation.", "https://www.maker-ray.com");
+			HeightmapApp app("Heightmap", "Adaptive GPU Tessellation.", "https://www.maker-ray.com");
 			result = runApp(&app, _argc, _argv);
 		}
 		else

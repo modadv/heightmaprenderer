@@ -5,9 +5,9 @@
 #include "common/imgui/imgui.h"
 #include "common/bgfx_utils.h"
 
-class ExampleHeightmap : public entry::AppI {
+class HeightmapApp : public entry::AppI {
 public:
-    ExampleHeightmap(const char* name, const char* description, const char* url)
+    HeightmapApp(const char* name, const char* description, const char* url)
         : entry::AppI(name, description, url) {}
 
     void init(int32_t argc, const char* const* argv, uint32_t width, uint32_t height) override {
